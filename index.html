@@ -1,4 +1,4 @@
-<!-- Build: 1787661084 -->
+<!-- Build: 1787661085 -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -1229,13 +1229,40 @@ function parseDespacho(despachoStr){
   return { municipio, especialidad, despacho: despachoStr };
 }
 
+// CORS Proxy helper - la API de Rama Judicial bloquea peticiones desde navegador
+const CORS_PROXIES = [
+  'https://corsproxy.io/?',
+  'https://api.allorigins.win/raw?url='
+];
+let currentProxyIndex = 0;
+
+async function fetchWithCorsProxy(url, retryCount = 0) {
+  const proxyUrl = CORS_PROXIES[currentProxyIndex] + encodeURIComponent(url);
+  
+  try {
+    const response = await fetch(proxyUrl);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    return response;
+  } catch (error) {
+    // Si falla, intentar con el siguiente proxy
+    if (retryCount < CORS_PROXIES.length - 1) {
+      currentProxyIndex = (currentProxyIndex + 1) % CORS_PROXIES.length;
+      console.log(`Proxy falló, intentando con: ${CORS_PROXIES[currentProxyIndex]}`);
+      return fetchWithCorsProxy(url, retryCount + 1);
+    }
+    throw error;
+  }
+}
+
 // Consult Rama Judicial API
 async function consultarRadicado(radicado){
   const normalized = normalizeRadicado(radicado);
   const url = `https://consultaprocesos.ramajudicial.gov.co:448/api/v2/Procesos/Consulta/NumeroRadicacion?numero=${normalized}&SoloActivos=false&pagina=1`;
   
   try {
-    const response = await fetch(url);
+    const response = await fetchWithCorsProxy(url);
     if(!response.ok) throw new Error('Error en la consulta');
     
     const data = await response.json();
@@ -1423,7 +1450,7 @@ async function syncProcess(proceso){
     const url = `https://consultaprocesos.ramajudicial.gov.co:448/api/v2/Procesos/Consulta/NumeroRadicacion?numero=${normalized}&SoloActivos=false&pagina=1`;
     
     const partesStart = Date.now();
-    const response = await fetch(url);
+    const response = await fetchWithCorsProxy(url);
     const partesDuration = ((Date.now() - partesStart) / 1000).toFixed(1) + ' s';
     
     if(!response.ok){
@@ -1472,7 +1499,7 @@ async function syncProcess(proceso){
       try {
         const actStart = Date.now();
         const actUrl = `https://consultaprocesos.ramajudicial.gov.co:448/api/v2/Proceso/Actuaciones/${p.idProceso}?pagina=1`;
-        const actResponse = await fetch(actUrl);
+        const actResponse = await fetchWithCorsProxy(actUrl);
         const actDuration = ((Date.now() - actStart) / 1000).toFixed(1) + ' s';
         
         if(actResponse.ok){
