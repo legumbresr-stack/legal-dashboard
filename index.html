@@ -1040,6 +1040,7 @@ function renderRamaJudicial(){
 // Store for consulted processes
 let consultedProcesses = [];
 let selectedProcessIds = new Set();
+let currentReviewFilter = 'todos'; // Filtro actual: todos, listos, privados, duplicados, errores
 
 function renderRevisarProcesos(){
   const listos = consultedProcesses.filter(p => p.status === 'listo');
@@ -1047,6 +1048,13 @@ function renderRevisarProcesos(){
   const privados = consultedProcesses.filter(p => p.status === 'privado');
   const noSoportado = consultedProcesses.filter(p => p.status === 'noSoportado');
   const errores = consultedProcesses.filter(p => p.status === 'error');
+  
+  // Filtrar procesos según el tab seleccionado
+  let filteredProcesses = consultedProcesses;
+  if(currentReviewFilter === 'listos') filteredProcesses = listos;
+  else if(currentReviewFilter === 'privados') filteredProcesses = privados;
+  else if(currentReviewFilter === 'duplicados') filteredProcesses = duplicados;
+  else if(currentReviewFilter === 'errores') filteredProcesses = errores;
   
   const selectedCount = selectedProcessIds.size;
   
@@ -1101,11 +1109,11 @@ function renderRevisarProcesos(){
     </div>
 
     <div class="filter-tabs">
-      <button class="filter-tab active" data-filter="todos">Todos <span class="count">${consultedProcesses.length}</span></button>
-      <button class="filter-tab" data-filter="listos">Listos <span class="count">${listos.length}</span></button>
-      <button class="filter-tab" data-filter="privados">Privados <span class="count">${privados.length}</span></button>
-      <button class="filter-tab" data-filter="duplicados">Duplicados <span class="count">${duplicados.length}</span></button>
-      <button class="filter-tab" data-filter="errores">Errores <span class="count">${errores.length}</span></button>
+      <button class="filter-tab ${currentReviewFilter === 'todos' ? 'active' : ''}" data-filter="todos">Todos <span class="count">${consultedProcesses.length}</span></button>
+      <button class="filter-tab ${currentReviewFilter === 'listos' ? 'active' : ''}" data-filter="listos">Listos <span class="count">${listos.length}</span></button>
+      <button class="filter-tab ${currentReviewFilter === 'privados' ? 'active' : ''}" data-filter="privados">Privados <span class="count">${privados.length}</span></button>
+      <button class="filter-tab ${currentReviewFilter === 'duplicados' ? 'active' : ''}" data-filter="duplicados">Duplicados <span class="count">${duplicados.length}</span></button>
+      <button class="filter-tab ${currentReviewFilter === 'errores' ? 'active' : ''}" data-filter="errores">Errores <span class="count">${errores.length}</span></button>
     </div>
 
     <div class="results-header">
@@ -1129,7 +1137,7 @@ function renderRevisarProcesos(){
         </tr>
       </thead>
       <tbody id="processTableBody">
-        ${consultedProcesses.map(p => {
+        ${filteredProcesses.map(p => {
           let estadoHtml = '';
           if(p.status === 'listo') estadoHtml = '<span class="estado-listo">Listo</span>';
           else if(p.status === 'privado') estadoHtml = '<span style="display:flex;align-items:center;gap:4px;color:#f59e0b;font-size:12px;">🔒 Privado</span>';
@@ -1277,6 +1285,7 @@ async function consultarRadicado(radicado){
 async function consultarRadicados(radicadosList){
   consultedProcesses = [];
   selectedProcessIds = new Set();
+  currentReviewFilter = 'todos'; // Reset filtro al iniciar nueva consulta
   
   // Show loading
   document.getElementById('content').innerHTML = renderLoadingProcesos();
@@ -3118,6 +3127,14 @@ function bindContentEvents(){
   // Revisar procesos view events
   const btnAtrasRevisar = document.getElementById('btnAtrasRevisar');
   if(btnAtrasRevisar) btnAtrasRevisar.addEventListener('click', ()=>{ currentView = 'ramaJudicial'; render(); });
+
+  // Filter tabs en revisar procesos
+  document.querySelectorAll('.filter-tab[data-filter]').forEach(tab => {
+    tab.addEventListener('click', () => {
+      currentReviewFilter = tab.dataset.filter;
+      render();
+    });
+  });
 
   const selectAll = document.getElementById('selectAll');
   if(selectAll) selectAll.addEventListener('change', (e)=>{
