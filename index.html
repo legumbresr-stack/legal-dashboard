@@ -2704,7 +2704,7 @@ function isoDate(d){
 function getDayEvents(dateStr){
   const items = [];
   // Usar todos los procesos (incluyendo archivados) para el calendario
-  const allProcesos = JSON.parse(localStorage.getItem(STORE_KEY) || '[]');
+  const allProcesos = JSON.parse(localStorage.getItem('procesos') || '[]');
   
   allProcesos.forEach(p=>{
     if(p.fechaInicio === dateStr) items.push({type:'inicio', label:'Inicio: '+p.nombre, proceso:p});
