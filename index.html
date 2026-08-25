@@ -928,6 +928,10 @@ function render(){
     document.getElementById('topbarTitle').textContent='Clientes'; 
     el.innerHTML = renderClientes(); 
   }
+  else if(currentView==='configuraciones'){ 
+    document.getElementById('topbarTitle').textContent='Configuraciones'; 
+    el.innerHTML = renderConfiguraciones(); 
+  }
   else if(currentView==='calendario'){ 
     document.getElementById('topbarTitle').textContent='Calendario'; 
     el.innerHTML = renderCalendario(); 
@@ -2723,6 +2727,56 @@ function renderClientes(){
   `;
 }
 
+function renderConfiguraciones(){
+  const procesosCount = procesos.length;
+  const clientesCount = clientes.length;
+  const eventosCount = eventos.length;
+  const calendarEventsCount = JSON.parse(localStorage.getItem('calendarEvents') || '[]').length;
+  
+  return `
+    <h1 class="page-title">Configuraciones</h1>
+    <p class="page-sub">Administra tus datos y preferencias</p>
+    
+    <div class="panel">
+      <h3 class="panel-title" style="margin-bottom:8px;">📦 Exportar / Importar datos</h3>
+      <p class="panel-sub">Haz backup de tus datos o restáuralos desde un archivo anterior.</p>
+      
+      <div style="background:#f8fafc;border-radius:8px;padding:16px;margin-bottom:20px;">
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">Datos actuales:</div>
+        <div style="display:flex;gap:24px;flex-wrap:wrap;">
+          <div><span style="font-weight:600;font-size:18px;">${procesosCount}</span> <span style="color:var(--text-muted);font-size:13px;">procesos</span></div>
+          <div><span style="font-weight:600;font-size:18px;">${clientesCount}</span> <span style="color:var(--text-muted);font-size:13px;">clientes</span></div>
+          <div><span style="font-weight:600;font-size:18px;">${eventosCount}</span> <span style="color:var(--text-muted);font-size:13px;">eventos</span></div>
+          <div><span style="font-weight:600;font-size:18px;">${calendarEventsCount}</span> <span style="color:var(--text-muted);font-size:13px;">eventos calendario</span></div>
+        </div>
+      </div>
+      
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <button class="btn btn-primary" id="btnExportarDatos" style="display:flex;align-items:center;gap:8px;">
+          📥 Exportar todos los datos
+        </button>
+        <button class="btn" id="btnImportarDatos" style="display:flex;align-items:center;gap:8px;">
+          📤 Importar datos
+        </button>
+        <input type="file" id="inputImportarDatos" accept=".json" style="display:none;">
+      </div>
+      
+      <div style="margin-top:16px;padding:12px;background:#fef3c7;border-radius:8px;font-size:12px;color:#92400e;">
+        ⚠️ <strong>Importante:</strong> Al importar datos, se reemplazarán TODOS los datos actuales. Asegúrate de exportar primero si quieres conservar algo.
+      </div>
+    </div>
+    
+    <div class="panel">
+      <h3 class="panel-title" style="margin-bottom:8px;">🗑️ Borrar datos</h3>
+      <p class="panel-sub">Elimina todos los datos de la aplicación. Esta acción no se puede deshacer.</p>
+      
+      <button class="btn" id="btnBorrarTodo" style="color:#dc2626;border-color:#dc2626;">
+        Borrar todos los datos
+      </button>
+    </div>
+  `;
+}
+
 function isoDate(d){
   const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
   return y+'-'+m+'-'+day;
@@ -3249,6 +3303,102 @@ function bindContentEvents(){
       saveClientes(); render();
     }
   }));
+
+  // ======= CONFIGURACIONES - EXPORTAR/IMPORTAR =======
+  const btnExportarDatos = document.getElementById('btnExportarDatos');
+  if(btnExportarDatos){
+    btnExportarDatos.addEventListener('click', () => {
+      const exportData = {
+        version: '1.0',
+        exportDate: new Date().toISOString(),
+        procesos: JSON.parse(localStorage.getItem('procesos') || '[]'),
+        clientes: JSON.parse(localStorage.getItem('clientes') || '[]'),
+        eventos: JSON.parse(localStorage.getItem('eventos') || '[]'),
+        calendarEvents: JSON.parse(localStorage.getItem('calendarEvents') || '[]')
+      };
+      
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `legal-dashboard-backup-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      alert('✅ Datos exportados correctamente');
+    });
+  }
+  
+  const btnImportarDatos = document.getElementById('btnImportarDatos');
+  const inputImportarDatos = document.getElementById('inputImportarDatos');
+  if(btnImportarDatos && inputImportarDatos){
+    btnImportarDatos.addEventListener('click', () => {
+      inputImportarDatos.click();
+    });
+    
+    inputImportarDatos.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if(!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const importData = JSON.parse(event.target.result);
+          
+          if(!importData.procesos && !importData.clientes){
+            alert('❌ El archivo no tiene el formato correcto');
+            return;
+          }
+          
+          const confirmMsg = `¿Importar datos?\n\nEsto reemplazará:\n- ${(importData.procesos || []).length} procesos\n- ${(importData.clientes || []).length} clientes\n- ${(importData.eventos || []).length} eventos\n- ${(importData.calendarEvents || []).length} eventos de calendario\n\n⚠️ Los datos actuales se perderán.`;
+          
+          if(confirm(confirmMsg)){
+            if(importData.procesos) localStorage.setItem('procesos', JSON.stringify(importData.procesos));
+            if(importData.clientes) localStorage.setItem('clientes', JSON.stringify(importData.clientes));
+            if(importData.eventos) localStorage.setItem('eventos', JSON.stringify(importData.eventos));
+            if(importData.calendarEvents) localStorage.setItem('calendarEvents', JSON.stringify(importData.calendarEvents));
+            
+            // Recargar datos en memoria
+            procesos = JSON.parse(localStorage.getItem('procesos') || '[]');
+            clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
+            eventos = JSON.parse(localStorage.getItem('eventos') || '[]');
+            
+            alert('✅ Datos importados correctamente');
+            render();
+          }
+        } catch(err) {
+          alert('❌ Error al leer el archivo: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+      inputImportarDatos.value = ''; // Reset para permitir reimportar el mismo archivo
+    });
+  }
+  
+  const btnBorrarTodo = document.getElementById('btnBorrarTodo');
+  if(btnBorrarTodo){
+    btnBorrarTodo.addEventListener('click', () => {
+      const confirmMsg = '⚠️ ¿BORRAR TODOS LOS DATOS?\n\nEsta acción eliminará:\n- Todos los procesos\n- Todos los clientes\n- Todos los eventos\n\nEsta acción NO se puede deshacer.\n\nEscribe "BORRAR" para confirmar:';
+      const input = prompt(confirmMsg);
+      
+      if(input === 'BORRAR'){
+        localStorage.removeItem('procesos');
+        localStorage.removeItem('clientes');
+        localStorage.removeItem('eventos');
+        localStorage.removeItem('calendarEvents');
+        
+        procesos = [];
+        clientes = [];
+        eventos = [];
+        
+        alert('✅ Todos los datos han sido eliminados');
+        currentView = 'dashboard';
+        render();
+      } else if(input !== null) {
+        alert('Operación cancelada. Debes escribir "BORRAR" exactamente.');
+      }
+    });
+  }
 
   const calPrev = document.getElementById('calPrev');
   const calNext = document.getElementById('calNext');
