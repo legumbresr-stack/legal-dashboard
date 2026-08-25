@@ -2740,6 +2740,7 @@ function getDayEvents(dateStr){
 }
 
 function renderCalendario(){
+  console.log('renderCalendario called');
   const year = calMonth.getFullYear(), month = calMonth.getMonth();
   const monthLabel = calMonth.toLocaleDateString('es-CO',{month:'long', year:'numeric'});
   const firstDay = new Date(year, month, 1);
