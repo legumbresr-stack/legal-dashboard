@@ -1040,6 +1040,7 @@ let selectedProcessIds = new Set();
 function renderRevisarProcesos(){
   const listos = consultedProcesses.filter(p => p.status === 'listo');
   const duplicados = consultedProcesses.filter(p => p.status === 'duplicado');
+  const privados = consultedProcesses.filter(p => p.status === 'privado');
   const noSoportado = consultedProcesses.filter(p => p.status === 'noSoportado');
   const errores = consultedProcesses.filter(p => p.status === 'error');
   
@@ -1064,20 +1065,30 @@ function renderRevisarProcesos(){
     <h1 class="page-title">Revisa antes de agregar</h1>
     <p class="page-sub">Encontramos ${consultedProcesses.length} radicado${consultedProcesses.length !== 1 ? 's' : ''}. Asigna un despacho a los procesos de instancia superior y luego agrégalos.</p>
     
+    ${privados.length > 0 ? `
+    <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:16px;margin-bottom:20px;display:flex;align-items:flex-start;gap:12px;">
+      <span style="font-size:20px;">🔒</span>
+      <div>
+        <div style="font-weight:600;color:#92400e;margin-bottom:4px;">Se encontraron ${privados.length} proceso${privados.length !== 1 ? 's' : ''} privado${privados.length !== 1 ? 's' : ''}</div>
+        <div style="font-size:13px;color:#a16207;">Los procesos privados tienen información restringida en la Rama Judicial. Puedes agregarlos pero no tendrán datos de partes ni actuaciones detalladas.</div>
+      </div>
+    </div>
+    ` : ''}
+    
     <div class="status-cards">
       <div class="status-card green">
         <div class="status-label"><span class="status-dot"></span> Listos</div>
         <div class="status-value">${listos.length}</div>
       </div>
+      <div class="status-card" style="background:#fef3c7;">
+        <div class="status-label" style="color:#92400e;"><span class="status-dot" style="background:#f59e0b;"></span> Privados</div>
+        <div class="status-value" style="color:#92400e;">${privados.length}</div>
+        <div class="status-sub" style="color:#a16207;">Info limitada</div>
+      </div>
       <div class="status-card gray">
         <div class="status-label"><span class="status-dot"></span> Duplicados</div>
         <div class="status-value">${duplicados.length}</div>
         <div class="status-sub">Se omitirán</div>
-      </div>
-      <div class="status-card amber">
-        <div class="status-label"><span class="status-dot"></span> Aún no soportado</div>
-        <div class="status-value">${noSoportado.length}</div>
-        <div class="status-sub">Próximamente</div>
       </div>
       <div class="status-card red">
         <div class="status-label"><span class="status-dot"></span> No se pudo leer</div>
@@ -1088,8 +1099,8 @@ function renderRevisarProcesos(){
     <div class="filter-tabs">
       <button class="filter-tab active" data-filter="todos">Todos <span class="count">${consultedProcesses.length}</span></button>
       <button class="filter-tab" data-filter="listos">Listos <span class="count">${listos.length}</span></button>
+      <button class="filter-tab" data-filter="privados">Privados <span class="count">${privados.length}</span></button>
       <button class="filter-tab" data-filter="duplicados">Duplicados <span class="count">${duplicados.length}</span></button>
-      <button class="filter-tab" data-filter="noSoportado">No soportado <span class="count">${noSoportado.length}</span></button>
       <button class="filter-tab" data-filter="errores">Errores <span class="count">${errores.length}</span></button>
     </div>
 
@@ -1104,7 +1115,7 @@ function renderRevisarProcesos(){
     <table class="results-table">
       <thead>
         <tr>
-          <th><input type="checkbox" class="checkbox" id="selectAll" ${selectedProcessIds.size === listos.length && listos.length > 0 ? 'checked' : ''}></th>
+          <th><input type="checkbox" class="checkbox" id="selectAll" ${selectedProcessIds.size === (listos.length + privados.length) && (listos.length + privados.length) > 0 ? 'checked' : ''}></th>
           <th>Radicado</th>
           <th>Municipio</th>
           <th>Especialidad</th>
@@ -1114,17 +1125,27 @@ function renderRevisarProcesos(){
         </tr>
       </thead>
       <tbody id="processTableBody">
-        ${consultedProcesses.map(p => `
+        ${consultedProcesses.map(p => {
+          let estadoHtml = '';
+          if(p.status === 'listo') estadoHtml = '<span class="estado-listo">Listo</span>';
+          else if(p.status === 'privado') estadoHtml = '<span style="display:flex;align-items:center;gap:4px;color:#f59e0b;font-size:12px;">🔒 Privado</span>';
+          else if(p.status === 'duplicado') estadoHtml = '<span style="color:#6b7280;font-size:12px;">Duplicado</span>';
+          else if(p.status === 'error') estadoHtml = '<span style="color:#dc2626;font-size:12px;">Error: ' + (p.error || 'Desconocido') + '</span>';
+          else estadoHtml = '<span style="color:#6b7280;font-size:12px;">' + p.status + '</span>';
+          
+          const canSelect = p.status === 'listo' || p.status === 'privado';
+          
+          return `
           <tr data-id="${p.id}">
-            <td><input type="checkbox" class="checkbox process-checkbox" data-id="${p.id}" ${selectedProcessIds.has(p.id) ? 'checked' : ''} ${p.status !== 'listo' ? 'disabled' : ''}></td>
+            <td><input type="checkbox" class="checkbox process-checkbox" data-id="${p.id}" ${selectedProcessIds.has(p.id) ? 'checked' : ''} ${!canSelect ? 'disabled' : ''}></td>
             <td><a href="#" class="radicado-link">${p.radicado}</a></td>
             <td>${p.municipio || '—'}</td>
             <td>${p.especialidad || '—'}</td>
             <td>${p.despacho || '—'}</td>
-            <td><span class="estado-listo">${p.status === 'listo' ? 'Listo' : p.status}</span></td>
+            <td>${estadoHtml}</td>
             <td><button class="delete-btn" data-id="${p.id}">🗑</button></td>
           </tr>
-        `).join('')}
+        `}).join('')}
       </tbody>
     </table>
 
@@ -1134,7 +1155,7 @@ function renderRevisarProcesos(){
         <button class="btn-back" id="btnAtrasRevisar">Atrás</button>
       </div>
       <div style="display:flex;align-items:center;gap:16px;">
-        <span class="bottom-info">${selectedCount} de ${listos.length} procesos listos seleccionados</span>
+        <span class="bottom-info">${selectedCount} de ${listos.length + privados.length} procesos seleccionados</span>
         <button class="btn-continue" id="btnAgregarProcesos" ${selectedCount === 0 ? 'disabled' : ''}>Agregar ${selectedCount} proceso${selectedCount !== 1 ? 's' : ''} <span>→</span></button>
       </div>
     </div>
@@ -1211,6 +1232,10 @@ async function consultarRadicado(radicado){
       const proceso = data.procesos[0];
       const parsed = parseDespacho(proceso.despacho);
       
+      // Detectar si es proceso privado
+      const esPrivado = proceso.esPrivado === true || 
+                        (proceso.sujetosProcesales && proceso.sujetosProcesales.includes('PROCESO PRIVADO'));
+      
       return {
         id: proceso.idProceso,
         radicado: proceso.llaveProceso,
@@ -1221,7 +1246,8 @@ async function consultarRadicado(radicado){
         fechaProceso: proceso.fechaProceso,
         fechaUltimaActuacion: proceso.fechaUltimaActuacion,
         sujetosProcesales: proceso.sujetosProcesales,
-        status: 'listo',
+        esPrivado: esPrivado,
+        status: esPrivado ? 'privado' : 'listo',
         raw: proceso
       };
     } else {
@@ -1256,10 +1282,11 @@ async function consultarRadicados(radicadosList){
     const result = await consultarRadicado(radicado);
     consultedProcesses.push(result);
     
-    // Auto-select if listo
+    // Auto-select if listo (privados no se auto-seleccionan para que el usuario decida)
     if(result.status === 'listo'){
       selectedProcessIds.add(result.id);
     }
+    // Los procesos privados no se auto-seleccionan - el usuario debe seleccionarlos manualmente
   }
   
   // Check for duplicates (already in procesos array)
