@@ -1437,44 +1437,83 @@ async function consultarPublicacionesDespacho(codigoDespacho, fechaInicio, fecha
 
 // Vincular documento a proceso por número de radicado
 function vincularDocumentoAProceso(doc){
-  // Extraer posibles números de radicado del nombre del documento
-  // Patrones: 2024-00358, -2024-00358, 2024-00094, etc.
-  const patronRadicado = /(\d{4})-?(\d{4,6})/g;
-  const matches = doc.nombre.match(patronRadicado);
+  if(!doc || !doc.nombre) return null;
   
-  if(!matches) return null;
-  
-  for(const match of matches){
-    // Normalizar el radicado encontrado
-    const radicadoDoc = match.replace('-', '');
+  // Buscar en cada proceso
+  for(let i = 0; i < procesos.length; i++){
+    const p = procesos[i];
+    if(!p.radicado) continue;
     
-    // Buscar proceso con este radicado
-    for(let i = 0; i < procesos.length; i++){
-      const p = procesos[i];
-      if(!p.radicado) continue;
-      
-      // Extraer los últimos dígitos del radicado del proceso (año y número)
-      const radicadoNormalizado = p.radicado.replace(/-/g, '');
-      
-      // Verificar si coinciden (el documento puede tener solo año-número)
-      if(radicadoNormalizado.includes(radicadoDoc) || radicadoDoc.includes(radicadoNormalizado.slice(-10))){
-        // Verificar si ya está vinculado
-        if(!p.documentosPublicaciones) p.documentosPublicaciones = [];
-        
-        const yaExiste = p.documentosPublicaciones.some(d => d.url === doc.url);
-        if(yaExiste) return null;
-        
-        // Agregar documento al proceso
-        p.documentosPublicaciones.push({
-          nombre: doc.nombre,
-          url: doc.url,
-          fecha: doc.fecha || new Date().toISOString().split('T')[0],
-          fechaSincronizado: new Date().toISOString()
-        });
-        
-        console.log(`📎 Documento vinculado: ${doc.nombre} → ${p.radicado}`);
-        return p;
+    // Normalizar el radicado del proceso (quitar guiones)
+    const radicadoLimpio = p.radicado.replace(/[-\s]/g, '');
+    
+    // Extraer los 9 dígitos del radicado (posiciones 13-21, índice 12-20)
+    // Ejemplo: 11001311002720250033800 → 202500338
+    const codigoExpediente = radicadoLimpio.length >= 21 
+      ? radicadoLimpio.substring(12, 21) 
+      : radicadoLimpio.substring(12); // Si es más corto, tomar lo que haya
+    
+    // También extraer formato año-número: 2025-00338 o 202500338
+    const añoNumero = radicadoLimpio.length >= 21
+      ? radicadoLimpio.substring(12, 16) + radicadoLimpio.substring(16, 21) // 20250033800 → 202500338
+      : '';
+    
+    // Limpiar nombre del documento para buscar
+    const nombreDoc = doc.nombre.toLowerCase();
+    
+    // Verificar si el documento corresponde a este proceso
+    let coincide = false;
+    
+    // Método 1: El documento empieza con el código del expediente (202500338)
+    if(codigoExpediente && nombreDoc.startsWith(codigoExpediente.toLowerCase())){
+      coincide = true;
+    }
+    
+    // Método 2: El documento contiene el código del expediente
+    if(!coincide && codigoExpediente && nombreDoc.includes(codigoExpediente.toLowerCase())){
+      coincide = true;
+    }
+    
+    // Método 3: Buscar patrón año-número en el nombre (2024-00358, 202400358, etc.)
+    if(!coincide){
+      const patronesDoc = nombreDoc.match(/(\d{4})[-_]?(\d{5,6})/g);
+      if(patronesDoc){
+        for(const patron of patronesDoc){
+          const patronLimpio = patron.replace(/[-_]/g, '');
+          if(radicadoLimpio.includes(patronLimpio)){
+            coincide = true;
+            break;
+          }
+        }
       }
+    }
+    
+    // Método 4: Comparar los últimos dígitos significativos
+    if(!coincide && añoNumero){
+      // Buscar si el nombre contiene algo como 202500338
+      if(nombreDoc.includes(añoNumero.substring(0, 9).toLowerCase())){
+        coincide = true;
+      }
+    }
+    
+    if(coincide){
+      // Verificar si ya está vinculado
+      if(!p.documentosPublicaciones) p.documentosPublicaciones = [];
+      
+      const yaExiste = p.documentosPublicaciones.some(d => d.url === doc.url || d.nombre === doc.nombre);
+      if(yaExiste) return null;
+      
+      // Agregar documento al proceso
+      p.documentosPublicaciones.push({
+        nombre: doc.nombre,
+        url: doc.url,
+        fecha: doc.fecha || new Date().toISOString().split('T')[0],
+        fechaSincronizado: new Date().toISOString(),
+        tipo: doc.nombre.toLowerCase().includes('estado') ? 'Estado' : 'Documento'
+      });
+      
+      console.log(`📎 Documento vinculado: ${doc.nombre} → ${p.radicado} (código: ${codigoExpediente})`);
+      return p;
     }
   }
   
