@@ -366,7 +366,7 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             req.add_header('Accept-Language', 'es-CO,es;q=0.9,en;q=0.8')
             req.add_header('Referer', base_url)
             
-            with opener.open(req, timeout=30) as response:
+            with opener.open(req, timeout=15) as response:
                 html_data = response.read().decode('utf-8', errors='ignore')
                 
                 print(f'[Publicaciones] HTML recibido: {len(html_data)} bytes')
