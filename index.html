@@ -1,4 +1,4 @@
-<!-- Build: 1787661089 -->
+<!-- Build: 1787661090 -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -2686,18 +2686,60 @@ function renderProcesoCalendarioTab(proceso){
 }
 
 function renderPartesTab(proceso, getDemandante, getDemandado){
+  // Parsear todos los sujetos procesales del campo notas
+  const parseAllPartes = (notas) => {
+    if(!notas) return [];
+    // Separar por | y limpiar
+    const partes = notas.split('|').map(p => p.trim()).filter(p => p);
+    return partes.map(parte => {
+      // Formato: "Tipo: Nombre"
+      const match = parte.match(/^([^:]+):\s*(.+)$/);
+      if(match) {
+        return {
+          tipo: match[1].replace(/[\r\n\t]+/g, ' ').trim(),
+          nombre: match[2].replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim()
+        };
+      }
+      return { tipo: 'Otro', nombre: parte };
+    });
+  };
+  
+  const partes = parseAllPartes(proceso.notas);
+  const demandante = getDemandante(proceso.notas);
+  const demandado = getDemandado(proceso.notas);
+  
+  // Si no hay partes parseadas, mostrar solo demandante/demandado
+  if(partes.length === 0) {
+    return `
+      <div class="detail-section">
+        <h3 class="detail-section-title">Partes del proceso</h3>
+        <table style="width:100%;font-size:14px;">
+          <tr>
+            <td style="padding:12px 0;color:var(--text-muted);width:180px;vertical-align:top;">Demandante</td>
+            <td style="padding:12px 0;font-weight:500;">${demandante}</td>
+          </tr>
+          <tr>
+            <td style="padding:12px 0;color:var(--text-muted);vertical-align:top;">Demandado</td>
+            <td style="padding:12px 0;font-weight:500;">${demandado}</td>
+          </tr>
+        </table>
+        <p style="color:var(--text-muted);font-size:13px;margin-top:16px;">
+          💡 Haz clic en "Sincronizar ahora" en la pestaña Sincronización para actualizar los datos.
+        </p>
+      </div>
+    `;
+  }
+  
   return `
     <div class="detail-section">
       <h3 class="detail-section-title">Partes del proceso</h3>
       <table style="width:100%;font-size:14px;">
-        <tr>
-          <td style="padding:12px 0;color:var(--text-muted);width:120px;vertical-align:top;">Demandante</td>
-          <td style="padding:12px 0;font-weight:500;">${getDemandante(proceso.notas)}</td>
-        </tr>
-        <tr>
-          <td style="padding:12px 0;color:var(--text-muted);vertical-align:top;">Demandado</td>
-          <td style="padding:12px 0;font-weight:500;">${getDemandado(proceso.notas)}</td>
-        </tr>
+        ${partes.map(p => `
+          <tr>
+            <td style="padding:12px 0;color:var(--text-muted);width:180px;vertical-align:top;">${p.tipo}</td>
+            <td style="padding:12px 0;font-weight:500;">${p.nombre}</td>
+          </tr>
+        `).join('')}
       </table>
     </div>
   `;
