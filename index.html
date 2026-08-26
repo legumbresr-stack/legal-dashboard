@@ -838,6 +838,60 @@
   .clientes-empty .empty-icon{font-size:48px;margin-bottom:16px;opacity:0.5;}
   .clientes-empty h3{font-size:16px;font-weight:600;margin:0 0 8px;color:var(--text);}
   .clientes-empty p{font-size:13px;color:var(--text-muted);margin:0 0 20px;line-height:1.5;}
+
+  /* ========== DESPACHOS PAGE STYLES ========== */
+  .despachos-page{display:flex;flex-direction:column;height:100%;min-height:calc(100vh - 40px);}
+  
+  .despachos-header{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--border);}
+  .despachos-header-left{display:flex;align-items:center;gap:12px;}
+  .despachos-icon{font-size:20px;}
+  .despachos-title{font-size:18px;font-weight:600;margin:0;}
+  
+  .despachos-toolbar{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;border-bottom:1px solid var(--border);background:#fafafa;}
+  .despachos-toolbar-left{display:flex;align-items:center;gap:16px;}
+  .despachos-toolbar-right{display:flex;align-items:center;gap:12px;}
+  
+  .despachos-search-box{display:flex;align-items:center;gap:8px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:#fff;min-width:220px;}
+  .despachos-search-box .search-icon{color:var(--text-muted);font-size:14px;}
+  .despachos-search-box input{border:none;outline:none;font-size:13px;width:100%;background:transparent;}
+  
+  .despachos-count{font-size:13px;color:var(--text-muted);}
+  
+  .despachos-filter-tabs{display:flex;align-items:center;background:#fff;border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+  .despachos-filter-tabs .filter-tab{padding:6px 14px;border:none;background:transparent;font-size:13px;cursor:pointer;color:var(--text-muted);transition:all 0.15s;}
+  .despachos-filter-tabs .filter-tab:not(:last-child){border-right:1px solid var(--border);}
+  .despachos-filter-tabs .filter-tab:hover{background:#f5f5f5;color:var(--text);}
+  .despachos-filter-tabs .filter-tab.active{background:var(--accent-soft);color:var(--accent);font-weight:500;}
+  
+  .despachos-content{display:flex;flex:1;overflow:hidden;}
+  
+  .despachos-sidebar{width:200px;flex-shrink:0;border-right:1px solid var(--border);padding:16px;background:#fafafa;display:flex;flex-direction:column;gap:8px;}
+  
+  .despachos-table-area{flex:1;overflow:auto;padding:0;}
+  
+  .despachos-table{width:100%;border-collapse:collapse;}
+  .despachos-table thead{background:#fafafa;position:sticky;top:0;z-index:5;}
+  .despachos-table th{padding:12px 16px;text-align:left;font-size:12px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.03em;border-bottom:1px solid var(--border);}
+  .despachos-table td{padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle;}
+  .despachos-table tbody tr:hover{background:#f8fafc;}
+  
+  .despacho-row{cursor:pointer;transition:background 0.15s;}
+  .despacho-nombre-cell{max-width:350px;}
+  .despacho-nombre-link{color:#d97706;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;}
+  .despacho-nombre-link:hover{text-decoration:underline;}
+  .despacho-codigo{color:#3b82f6;font-family:monospace;font-size:12px;}
+  .despacho-especialidad{color:#d97706;font-weight:500;}
+  .despacho-tipo{color:var(--text-muted);font-size:12px;}
+  
+  .procesos-count-badge{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:24px;padding:0 8px;border-radius:12px;background:#f1f5f9;font-size:12px;font-weight:600;color:var(--text);}
+  
+  .fecha-cell{color:var(--text-muted);font-size:12px;}
+  .row-arrow{color:var(--text-muted);font-size:14px;}
+  
+  .despachos-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;text-align:center;}
+  .despachos-empty .empty-icon{font-size:48px;margin-bottom:16px;opacity:0.5;}
+  .despachos-empty h3{font-size:16px;font-weight:600;margin:0 0 8px;color:var(--text);}
+  .despachos-empty p{font-size:13px;color:var(--text-muted);margin:0 0 20px;line-height:1.5;}
 </style>
 </head>
 <body>
@@ -1057,6 +1111,10 @@ function render(){
   else if(currentView==='clientes'){ 
     document.getElementById('topbarTitle').textContent='Clientes'; 
     el.innerHTML = renderClientes(); 
+  }
+  else if(currentView==='despachos'){ 
+    document.getElementById('topbarTitle').innerHTML='<span style="display:flex;align-items:center;gap:8px;">🏛 Despachos</span>'; 
+    el.innerHTML = renderDespachos(); 
   }
   else if(currentView==='configuraciones'){ 
     document.getElementById('topbarTitle').textContent='Configuraciones'; 
@@ -3429,6 +3487,232 @@ function renderClientes(){
   `;
 }
 
+// Variables para filtros de despachos
+let despachoSearchTerm = '';
+let despachoFilterType = 'mis'; // mis, todos
+
+function renderDespachos(){
+  // Extraer despachos únicos de los procesos
+  const despachosMap = new Map();
+  
+  procesos.forEach(p => {
+    if(!p.despacho) return;
+    
+    const codigo = extractCodigoDespacho(p.radicado);
+    const key = codigo || p.despacho;
+    
+    if(!despachosMap.has(key)){
+      despachosMap.set(key, {
+        nombre: p.despacho,
+        codigo: codigo,
+        municipio: p.municipio || extractMunicipio(p.despacho),
+        especialidad: p.especialidad || extractEspecialidad(p.despacho),
+        tipo: extractTipoDespacho(p.despacho),
+        procesos: [],
+        fechaUltimaPublicacion: null,
+        ultimaSync: null
+      });
+    }
+    
+    const despacho = despachosMap.get(key);
+    despacho.procesos.push(p);
+    
+    // Actualizar fecha última publicación
+    if(p.fechaUltimaActuacion){
+      if(!despacho.fechaUltimaPublicacion || new Date(p.fechaUltimaActuacion) > new Date(despacho.fechaUltimaPublicacion)){
+        despacho.fechaUltimaPublicacion = p.fechaUltimaActuacion;
+      }
+    }
+    
+    // Actualizar última sincronización
+    if(p.lastSync){
+      if(!despacho.ultimaSync || new Date(p.lastSync) > new Date(despacho.ultimaSync)){
+        despacho.ultimaSync = p.lastSync;
+      }
+    }
+  });
+  
+  let despachosList = Array.from(despachosMap.values());
+  
+  // Filtrar por búsqueda
+  if(despachoSearchTerm){
+    const term = despachoSearchTerm.toLowerCase();
+    despachosList = despachosList.filter(d => 
+      (d.nombre && d.nombre.toLowerCase().includes(term)) ||
+      (d.codigo && d.codigo.includes(term)) ||
+      (d.municipio && d.municipio.toLowerCase().includes(term))
+    );
+  }
+  
+  // Ordenar por nombre
+  despachosList.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+  
+  const despachosCount = despachosList.length;
+  
+  // Formatear tiempo relativo
+  const timeAgo = (dateStr) => {
+    if(!dateStr) return '—';
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now - d;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if(diffDays === 0) return 'hoy';
+    if(diffDays === 1) return 'hace 1 día';
+    if(diffDays < 7) return `hace ${diffDays} días`;
+    if(diffDays < 30) return `hace ${Math.floor(diffDays / 7)} semanas`;
+    return `hace ${Math.floor(diffDays / 30)} meses`;
+  };
+  
+  return `
+    <div class="despachos-page">
+      <!-- Header -->
+      <div class="despachos-header">
+        <div class="despachos-header-left">
+          <div class="despachos-icon">🏛</div>
+          <h1 class="despachos-title">Despachos</h1>
+        </div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="despachos-toolbar">
+        <div class="despachos-toolbar-left">
+          <button class="toolbar-btn" id="btnDespachosMenu">☰</button>
+          <div class="despachos-search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="despachoSearchInput" placeholder="Buscar despacho por nombre..." value="${despachoSearchTerm}">
+          </div>
+          <span class="despachos-count">${despachosCount} despacho${despachosCount !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="despachos-toolbar-right">
+          <div class="despachos-filter-tabs">
+            <button class="filter-tab ${despachoFilterType === 'mis' ? 'active' : ''}" data-despachofilter="mis">Mis despachos</button>
+            <button class="filter-tab ${despachoFilterType === 'todos' ? 'active' : ''}" data-despachofilter="todos">Todos</button>
+          </div>
+          <button class="toolbar-btn">🔽 Filtros</button>
+          <button class="toolbar-btn">↕ Ordenado por 1 campo</button>
+          <button class="toolbar-btn">⊞ Columnas</button>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <div class="despachos-content">
+        <!-- Sidebar Vistas -->
+        <div class="despachos-sidebar">
+          <button class="vista-btn">+ Nueva vista</button>
+          <div class="vista-search">
+            <span class="search-icon">🔍</span>
+            <input type="text" placeholder="Buscar vistas" disabled>
+          </div>
+          <div class="vista-item active">
+            <span class="vista-icon">📋</span>
+            Vista predeterminada
+          </div>
+        </div>
+
+        <!-- Table Area -->
+        <div class="despachos-table-area">
+          ${despachosList.length > 0 ? `
+            <table class="despachos-table">
+              <thead>
+                <tr>
+                  <th>Despacho</th>
+                  <th>Código</th>
+                  <th>Municipio</th>
+                  <th>Especialidad</th>
+                  <th>Tipo</th>
+                  <th style="text-align:center;">Procesos</th>
+                  <th>Fecha última publicación</th>
+                  <th>Última sincronización</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                ${despachosList.map(d => `
+                  <tr class="despacho-row" data-codigo="${d.codigo || ''}">
+                    <td class="despacho-nombre-cell">
+                      <span class="despacho-nombre-link">${d.nombre || '—'}</span>
+                    </td>
+                    <td class="despacho-codigo">${d.codigo || '—'}</td>
+                    <td>${d.municipio || '—'}</td>
+                    <td class="despacho-especialidad">${d.especialidad || '—'}</td>
+                    <td class="despacho-tipo">${d.tipo || '—'}</td>
+                    <td style="text-align:center;">
+                      <span class="procesos-count-badge">${d.procesos.length}</span>
+                    </td>
+                    <td class="fecha-cell">${timeAgo(d.fechaUltimaPublicacion)}</td>
+                    <td class="fecha-cell">${timeAgo(d.ultimaSync)}</td>
+                    <td>
+                      <span class="row-arrow">→</span>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          ` : `
+            <div class="despachos-empty">
+              <div class="empty-icon">🏛</div>
+              <h3>No hay despachos</h3>
+              <p>Los despachos aparecerán automáticamente cuando<br>agregues procesos con información de despacho.</p>
+            </div>
+          `}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Extraer código del despacho del radicado (primeros 11 dígitos son el código del despacho)
+function extractCodigoDespacho(radicado){
+  if(!radicado) return '';
+  const clean = radicado.replace(/[-\s]/g, '');
+  if(clean.length >= 11){
+    return clean.substring(0, 11);
+  }
+  return '';
+}
+
+// Extraer municipio del nombre del despacho
+function extractMunicipio(despacho){
+  if(!despacho) return '';
+  const municipios = ['BOGOTÁ', 'MEDELLÍN', 'CALI', 'BARRANQUILLA', 'CARTAGENA', 'BUCARAMANGA', 'PEREIRA', 'MANIZALES', 'SANTA MARTA', 'CÚCUTA', 'IBAGUÉ', 'VILLAVICENCIO', 'PASTO', 'NEIVA', 'ARMENIA', 'MONTERÍA'];
+  const upper = despacho.toUpperCase();
+  for(const m of municipios){
+    if(upper.includes(m)) return m;
+  }
+  // Intentar extraer del final después de " DE " o " - "
+  const parts = despacho.split(/\s+DE\s+|\s+-\s+/i);
+  if(parts.length > 1){
+    return parts[parts.length - 1].trim().toUpperCase();
+  }
+  return '';
+}
+
+// Extraer especialidad del nombre del despacho
+function extractEspecialidad(despacho){
+  if(!despacho) return '';
+  const upper = despacho.toUpperCase();
+  if(upper.includes('FAMILIA')) return 'FAMILIA';
+  if(upper.includes('CIVIL')) return 'CIVIL';
+  if(upper.includes('PENAL')) return 'PENAL';
+  if(upper.includes('LABORAL')) return 'LABORAL';
+  if(upper.includes('ADMINISTRATIVO')) return 'ADMINISTRATIVO';
+  if(upper.includes('PROMISCUO')) return 'PROMISCUO';
+  return '';
+}
+
+// Extraer tipo de despacho
+function extractTipoDespacho(despacho){
+  if(!despacho) return '';
+  const upper = despacho.toUpperCase();
+  if(upper.includes('CIRCUITO')) return 'Juzgado del Circuito';
+  if(upper.includes('MUNICIPAL')) return 'Juzgado Municipal';
+  if(upper.includes('TRIBUNAL')) return 'Tribunal';
+  if(upper.includes('CORTE')) return 'Corte';
+  if(upper.includes('DESPACHO')) return 'Despacho';
+  return 'Juzgado';
+}
+
 function renderConfiguraciones(){
   const procesosCount = procesos.length;
   const clientesCount = clientes.length;
@@ -4024,6 +4308,24 @@ function bindContentEvents(){
   document.querySelectorAll('[data-clientfilter]').forEach(tab => {
     tab.addEventListener('click', () => {
       clienteFilterType = tab.dataset.clientfilter;
+      render();
+    });
+  });
+  
+  // ======= DESPACHOS =======
+  // Búsqueda de despachos
+  const despachoSearchInput = document.getElementById('despachoSearchInput');
+  if(despachoSearchInput){
+    despachoSearchInput.addEventListener('input', (e) => {
+      despachoSearchTerm = e.target.value;
+      render();
+    });
+  }
+  
+  // Filtros de despachos (Mis despachos, Todos)
+  document.querySelectorAll('[data-despachofilter]').forEach(tab => {
+    tab.addEventListener('click', () => {
+      despachoFilterType = tab.dataset.despachofilter;
       render();
     });
   });
