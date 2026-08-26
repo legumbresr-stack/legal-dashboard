@@ -1340,12 +1340,16 @@ function savePublicaciones(){
 function getDespachosDeProcesos(){
   const despachos = new Map();
   procesos.forEach(p => {
-    if(p.despacho && p.codigoDespacho){
-      despachos.set(p.codigoDespacho, {
-        codigo: p.codigoDespacho,
-        nombre: p.despacho,
-        departamento: p.departamento || ''
-      });
+    if(p.despacho){
+      // Usar nombre del despacho como key para evitar mezclar juzgados diferentes
+      const codigo = p.codigoDespacho || extractCodigoDespacho(p.radicado);
+      if(!despachos.has(p.despacho)){
+        despachos.set(p.despacho, {
+          codigo: codigo,
+          nombre: p.despacho,
+          departamento: p.departamento || ''
+        });
+      }
     }
   });
   return Array.from(despachos.values());
@@ -4040,8 +4044,11 @@ function renderDespachos(){
   procesos.forEach(p => {
     if(!p.despacho) return;
     
-    const codigo = extractCodigoDespacho(p.radicado);
-    const key = codigo || p.despacho;
+    const codigo = p.codigoDespacho || extractCodigoDespacho(p.radicado);
+    
+    // Usar el nombre del despacho como key principal para evitar mezclar juzgados diferentes
+    // que pueden tener códigos similares en el radicado
+    const key = p.despacho; // Agrupar por nombre, no por código
     
     if(!despachosMap.has(key)){
       despachosMap.set(key, {
@@ -4058,6 +4065,11 @@ function renderDespachos(){
     
     const despacho = despachosMap.get(key);
     despacho.procesos.push(p);
+    
+    // Actualizar código si el proceso tiene uno más específico
+    if(p.codigoDespacho && (!despacho.codigo || despacho.codigo.length < p.codigoDespacho.length)){
+      despacho.codigo = p.codigoDespacho;
+    }
     
     // Actualizar fecha última publicación
     if(p.fechaUltimaActuacion){
@@ -4239,11 +4251,11 @@ function renderDespachos(){
               </thead>
               <tbody>
                 ${despachosList.map(d => `
-                  <tr class="despacho-row" data-codigo="${d.codigo || ''}">
+                  <tr class="despacho-row" data-despacho-nombre="${encodeURIComponent(d.nombre || '')}" data-codigo="${d.codigo || ''}">
                     <td class="despacho-nombre-cell">
                       <span class="despacho-nombre-link">${d.nombre || '—'}</span>
                     </td>
-                    <td class="despacho-codigo"><span class="despacho-codigo-link" data-codigo="${d.codigo || ''}">${d.codigo || '—'}</span></td>
+                    <td class="despacho-codigo"><span class="despacho-codigo-link" data-despacho-nombre="${encodeURIComponent(d.nombre || '')}" data-codigo="${d.codigo || ''}">${d.codigo || '—'}</span></td>
                     <td>${d.municipio || '—'}</td>
                     <td class="despacho-especialidad">${d.especialidad || '—'}</td>
                     <td class="despacho-tipo">${d.tipo || '—'}</td>
@@ -4278,12 +4290,12 @@ function renderDespachoDetail(){
   let despachoData = null;
   let despachoDirectorio = null;
   
-  // Primero buscar en los procesos cargados
+  // Primero buscar en los procesos cargados - usar nombre del despacho como key
   const despachosMap = new Map();
   procesos.forEach(p => {
     if(!p.despacho) return;
-    const codigo = extractCodigoDespacho(p.radicado);
-    const key = codigo || p.despacho;
+    const codigo = p.codigoDespacho || extractCodigoDespacho(p.radicado);
+    const key = p.despacho; // Usar nombre como key
     
     if(!despachosMap.has(key)){
       despachosMap.set(key, {
@@ -4301,6 +4313,11 @@ function renderDespachoDetail(){
     const despacho = despachosMap.get(key);
     despacho.procesos.push(p);
     
+    // Actualizar código si hay uno más específico
+    if(p.codigoDespacho && (!despacho.codigo || despacho.codigo.length < p.codigoDespacho.length)){
+      despacho.codigo = p.codigoDespacho;
+    }
+    
     if(p.fechaUltimaActuacion){
       if(!despacho.fechaUltimaPublicacion || new Date(p.fechaUltimaActuacion) > new Date(despacho.fechaUltimaPublicacion)){
         despacho.fechaUltimaPublicacion = p.fechaUltimaActuacion;
@@ -4313,17 +4330,22 @@ function renderDespachoDetail(){
     }
   });
   
-  // Buscar el despacho seleccionado
-  for(const [key, value] of despachosMap){
-    if(key === selectedDespachoId || value.codigo === selectedDespachoId){
-      despachoData = value;
-      break;
+  // Buscar el despacho seleccionado por nombre
+  if(despachosMap.has(selectedDespachoId)){
+    despachoData = despachosMap.get(selectedDespachoId);
+  } else {
+    // Fallback: buscar por código (compatibilidad)
+    for(const [key, value] of despachosMap){
+      if(value.codigo === selectedDespachoId){
+        despachoData = value;
+        break;
+      }
     }
   }
   
   // Buscar información adicional en el directorio
-  if(selectedDespachoId && directorioDespachos.length > 0){
-    const codigoBase = selectedDespachoId.replace(/[-\s]/g, '');
+  if(despachoData && despachoData.codigo && directorioDespachos.length > 0){
+    const codigoBase = despachoData.codigo.replace(/[-\s]/g, '');
     
     // Usar la misma lógica que buscarDespachoPorCodigo
     // Código de 12 dígitos
@@ -5379,9 +5401,10 @@ function bindContentEvents(){
       // Si hizo clic en el código, no propagar el evento de la fila
       if(e.target.classList.contains('despacho-codigo-link')) return;
       
-      const codigo = row.dataset.codigo;
-      if(codigo){
-        selectedDespachoId = codigo;
+      // Usar nombre del despacho como identificador (decodificado)
+      const nombreDespacho = row.dataset.despachoNombre ? decodeURIComponent(row.dataset.despachoNombre) : null;
+      if(nombreDespacho){
+        selectedDespachoId = nombreDespacho;
         selectedDespachoTab = 'informacion';
         render();
       }
@@ -5392,9 +5415,10 @@ function bindContentEvents(){
   document.querySelectorAll('.despacho-codigo-link').forEach(link => {
     link.addEventListener('click', (e) => {
       e.stopPropagation(); // Evitar que se propague al row
-      const codigo = link.dataset.codigo;
-      if(codigo){
-        selectedDespachoId = codigo;
+      // Usar nombre del despacho como identificador
+      const nombreDespacho = link.dataset.despachoNombre ? decodeURIComponent(link.dataset.despachoNombre) : null;
+      if(nombreDespacho){
+        selectedDespachoId = nombreDespacho;
         selectedDespachoTab = 'informacion';
         render();
       }
