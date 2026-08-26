@@ -3942,11 +3942,27 @@ function renderDespachoDetail(){
   
   // Buscar información adicional en el directorio
   if(selectedDespachoId && directorioDespachos.length > 0){
-    despachoDirectorio = directorioDespachos.find(d => 
-      d.codigo === selectedDespachoId || 
-      d.codigo === selectedDespachoId.substring(0, 12) ||
-      d.codigo === selectedDespachoId.substring(0, 11)
-    );
+    const codigoBase = selectedDespachoId.replace(/[-\s]/g, '');
+    
+    // Intentar diferentes variaciones del código
+    despachoDirectorio = directorioDespachos.find(d => d.codigo === codigoBase);
+    
+    // Si no encuentra, intentar agregando un 0 al final (11 dígitos -> 12 dígitos)
+    if(!despachoDirectorio && codigoBase.length === 11){
+      despachoDirectorio = directorioDespachos.find(d => d.codigo === codigoBase + '0');
+    }
+    
+    // Si no encuentra, intentar con los primeros 12 dígitos
+    if(!despachoDirectorio && codigoBase.length >= 12){
+      despachoDirectorio = directorioDespachos.find(d => d.codigo === codigoBase.substring(0, 12));
+    }
+    
+    // Búsqueda parcial: primeros 10 dígitos
+    if(!despachoDirectorio){
+      despachoDirectorio = directorioDespachos.find(d => d.codigo.startsWith(codigoBase.substring(0, 10)));
+    }
+    
+    console.log('Búsqueda despacho:', codigoBase, '-> Encontrado:', despachoDirectorio ? despachoDirectorio.nombre : 'NO');
   }
   
   // Combinar información
