@@ -1,4 +1,4 @@
-<!-- Build: 1787661091 -->
+<!-- Build: 1787661092 -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -1690,7 +1690,10 @@ async function syncProcess(proceso){
               anotacion: act.anotacion || '',
               fechaRegistro: act.fechaRegistro ? act.fechaRegistro.split('T')[0] : '',
               fechaInicial: act.fechaInicial ? act.fechaInicial.split('T')[0] : '',
-              fechaFinal: act.fechaFinal ? act.fechaFinal.split('T')[0] : ''
+              fechaFinal: act.fechaFinal ? act.fechaFinal.split('T')[0] : '',
+              conDocumentos: act.conDocumentos || false,
+              idRegActuacion: act.idRegActuacion || null,
+              consActuacion: act.consActuacion || null
             }));
             
             const ultimaAct = actuacionesOrdenadas[0];
@@ -2509,10 +2512,11 @@ function renderProcesoDetalle(proceso){
         ${selectedProcessTab === 'calendario' ? renderProcesoCalendarioTab(proceso) : ''}
         ${selectedProcessTab === 'partes' ? renderPartesTab(proceso, getDemandante, getDemandado) : ''}
         ${selectedProcessTab === 'notas' ? renderNotasTab(proceso) : ''}
+        ${selectedProcessTab === 'documentos' ? renderDocumentosTab(proceso) : ''}
         ${selectedProcessTab === 'sincronizacion' ? renderSincronizacionTab(proceso) : ''}
-        ${['documentos', 'relacionados'].includes(selectedProcessTab) ? `
+        ${selectedProcessTab === 'relacionados' ? `
           <div class="actuaciones-empty">
-            <div class="actuaciones-empty-icon">📂</div>
+            <div class="actuaciones-empty-icon">🔗</div>
             <div class="actuaciones-empty-title">Próximamente</div>
             <div class="actuaciones-empty-desc">Esta sección estará disponible pronto.</div>
           </div>
@@ -2984,6 +2988,77 @@ function renderNotasTab(proceso){
           <div class="notes-empty-text">No hay anotaciones aún.<br>Agrega tu primera anotación sobre este proceso.</div>
         </div>
       `}
+    </div>
+  `;
+}
+
+function renderDocumentosTab(proceso){
+  // Filtrar actuaciones que tienen documentos
+  const actuacionesConDocs = (proceso.actuaciones || []).filter(act => act.conDocumentos === true);
+  
+  // URL base para ver el proceso en Rama Judicial
+  const ramaUrl = `https://consultaprocesos.ramajudicial.gov.co/Procesos/FichaProcesoDescarga?IdProceso=${proceso.idProceso || ''}&RadProceso=${proceso.radicado || ''}`;
+  
+  if(actuacionesConDocs.length === 0){
+    return `
+      <div class="detail-section">
+        <h3 class="detail-section-title">Documentos del proceso</h3>
+        <div class="actuaciones-empty">
+          <div class="actuaciones-empty-icon">📄</div>
+          <div class="actuaciones-empty-title">No hay documentos disponibles</div>
+          <div class="actuaciones-empty-desc">
+            Las actuaciones de este proceso no tienen documentos adjuntos, o aún no se han sincronizado.<br><br>
+            <a href="${ramaUrl}" target="_blank" class="documento-link" style="font-size:14px;">
+              🔗 Ver proceso en Rama Judicial →
+            </a>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  
+  return `
+    <div class="detail-section">
+      <h3 class="detail-section-title">Documentos del proceso</h3>
+      <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px;">
+        ${actuacionesConDocs.length} actuación${actuacionesConDocs.length !== 1 ? 'es' : ''} con documentos disponibles
+      </p>
+      
+      <table class="documentos-table">
+        <thead>
+          <tr>
+            <th style="width:110px;">Fecha</th>
+            <th>Actuación</th>
+            <th>Anotación</th>
+            <th style="width:120px;text-align:center;">Documento</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${actuacionesConDocs.map(act => {
+            // URL para ver el documento en la página de Rama Judicial
+            const docUrl = `https://consultaprocesos.ramajudicial.gov.co/Procesos/FichaProcesoDescarga?IdProceso=${proceso.idProceso || ''}&RadProceso=${proceso.radicado || ''}#actuacion-${act.idRegActuacion || ''}`;
+            return `
+              <tr>
+                <td style="font-weight:500;color:var(--text);">${act.fecha || '—'}</td>
+                <td>${act.actuacion || '—'}</td>
+                <td style="color:var(--text-muted);font-size:12px;">${act.anotacion || '—'}</td>
+                <td style="text-align:center;">
+                  <a href="${ramaUrl}" target="_blank" class="btn" style="font-size:12px;padding:6px 12px;display:inline-flex;align-items:center;gap:4px;">
+                    📥 Ver
+                  </a>
+                </td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+      
+      <div style="margin-top:20px;padding:16px;background:#f8fafc;border-radius:8px;border:1px solid var(--border);">
+        <p style="font-size:13px;color:var(--text-muted);margin:0;">
+          💡 <strong>Nota:</strong> Los documentos se descargan directamente desde el portal de la Rama Judicial. 
+          Al hacer clic en "Ver", serás redirigido al portal oficial donde podrás descargar el documento.
+        </p>
+      </div>
     </div>
   `;
 }
