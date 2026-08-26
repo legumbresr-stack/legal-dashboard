@@ -1,4 +1,4 @@
-<!-- Build: 1787661087 -->
+<!-- Build: 1787661088 -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -1295,17 +1295,48 @@ function parseDespacho(despachoStr){
 }
 
 // CORS Proxy helper - la API de Rama Judicial bloquea peticiones desde navegador
+// Primero intenta usar el proxy local (proxy_server.py), luego proxies públicos
+const USE_LOCAL_PROXY = true; // Cambiar a false si no usas proxy_server.py
+
 const CORS_PROXIES = [
-  '', // Intentar directo primero (funciona en algunos casos)
+  '', // Intentar directo primero
   'https://corsproxy.io/?',
   'https://api.codetabs.com/v1/proxy?quest=',
   'https://thingproxy.freeboard.io/fetch/',
   'https://api.allorigins.win/raw?url='
 ];
 let currentProxyIndex = 0;
-let workingProxyIndex = -1; // Guardar el proxy que funciona
+let workingProxyIndex = -1;
+let useLocalProxy = USE_LOCAL_PROXY;
+
+// Convertir URL de Rama Judicial a URL del proxy local
+function toLocalProxyUrl(url) {
+  // https://consultaprocesos.ramajudicial.gov.co:448/api/v2/Procesos/...
+  // -> /api/rama/Procesos/...
+  const match = url.match(/ramajudicial\.gov\.co:448\/api\/v2\/(.+)/);
+  if (match) {
+    return '/api/rama/' + match[1];
+  }
+  return url;
+}
 
 async function fetchWithCorsProxy(url, retryCount = 0) {
+  // Intentar primero con proxy local
+  if (useLocalProxy && retryCount === 0) {
+    try {
+      const localUrl = toLocalProxyUrl(url);
+      console.log('Intentando con proxy local:', localUrl);
+      const response = await fetch(localUrl);
+      if (response.ok) {
+        console.log('✓ Proxy local funcionó');
+        return response;
+      }
+    } catch (e) {
+      console.log('Proxy local no disponible, usando proxies públicos...');
+      useLocalProxy = false;
+    }
+  }
+  
   // Si ya encontramos un proxy que funciona, usarlo directamente
   if (workingProxyIndex >= 0 && retryCount === 0) {
     currentProxyIndex = workingProxyIndex;
@@ -1321,15 +1352,12 @@ async function fetchWithCorsProxy(url, retryCount = 0) {
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
-    // Guardar el proxy que funcionó
     workingProxyIndex = currentProxyIndex;
     return response;
   } catch (error) {
     console.log(`Proxy falló: ${proxy || 'directo'} - ${error.message}`);
-    // Si falla, intentar con el siguiente proxy
     if (retryCount < CORS_PROXIES.length - 1) {
       currentProxyIndex = (currentProxyIndex + 1) % CORS_PROXIES.length;
-      console.log(`Intentando con: ${CORS_PROXIES[currentProxyIndex] || 'conexión directa'}`);
       return fetchWithCorsProxy(url, retryCount + 1);
     }
     throw error;
