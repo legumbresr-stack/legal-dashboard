@@ -1063,6 +1063,44 @@
   .btn-descargar-pdf:disabled{background:#9ca3af;cursor:not-allowed;}
   .doc-row{background:#f0f9ff;}
   .doc-row:hover{background:#e0f2fe !important;}
+  
+  /* Notificaciones de sincronización */
+  .sync-notification{
+    position:fixed;top:20px;right:20px;z-index:9999;
+    background:#fff;border:1px solid var(--border);border-radius:12px;
+    padding:16px 20px;box-shadow:0 4px 20px rgba(0,0,0,0.15);
+    display:flex;align-items:center;gap:12px;
+    transform:translateX(120%);transition:transform 0.3s ease;
+    max-width:350px;
+  }
+  .sync-notification.show{transform:translateX(0);}
+  .sync-notification .notif-icon{font-size:20px;}
+  .sync-notification .notif-text{flex:1;font-size:14px;color:var(--text);}
+  .sync-notification .notif-close{
+    background:none;border:none;font-size:18px;color:var(--text-muted);
+    cursor:pointer;padding:0;line-height:1;
+  }
+  .sync-notification .notif-close:hover{color:var(--text);}
+  
+  /* Badge de documentos nuevos en proceso */
+  .docs-badge{
+    display:inline-flex;align-items:center;justify-content:center;
+    background:#ef4444;color:#fff;font-size:10px;font-weight:600;
+    min-width:18px;height:18px;border-radius:9px;padding:0 5px;
+    margin-left:6px;
+  }
+  
+  /* Filas de documentos sincronizados */
+  .doc-row-sync{background:#f0fdf4;}
+  .doc-row-sync:hover{background:#dcfce7 !important;}
+  .btn-descargar-pub{
+    display:inline-flex;align-items:center;gap:4px;
+    padding:6px 12px;background:#3b82f6;color:#fff;
+    border:none;border-radius:6px;font-size:12px;font-weight:500;
+    cursor:pointer;transition:all 0.15s;
+  }
+  .btn-descargar-pub:hover{background:#2563eb;}
+  .btn-descargar-pub:disabled{background:#9ca3af;cursor:not-allowed;}
   .publicaciones-empty-results{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:8px;text-align:center;}
   .publicaciones-empty-results .empty-icon{font-size:32px;margin-bottom:8px;opacity:0.5;}
   .publicaciones-empty-results p{margin:0;color:var(--text-muted);font-size:13px;}
@@ -1255,6 +1293,15 @@ function startAutoSync(){
         render();
       }
     });
+    
+    // También sincronizar publicaciones
+    console.log('📋 Sincronizando publicaciones procesales...');
+    syncPublicacionesProcesales().then(updated => {
+      if(updated){
+        console.log('✅ Publicaciones actualizadas');
+        render();
+      }
+    });
   }
   
   // Then sync every 5 minutes (300000 ms)
@@ -1266,12 +1313,199 @@ function startAutoSync(){
         console.log('✅ Procesos actualizados');
         render();
       } else {
-        console.log('ℹ️ Sin cambios');
+        console.log('ℹ️ Sin cambios en procesos');
+      }
+      
+      // Sincronizar publicaciones procesales
+      const pubUpdated = await syncPublicacionesProcesales();
+      if(pubUpdated){
+        console.log('✅ Nuevas publicaciones encontradas');
+        render();
       }
     }
   }, 5 * 60 * 1000); // 5 minutos
   
   console.log('⏰ Auto-sync activado: cada 5 minutos');
+}
+
+// Storage key para publicaciones sincronizadas
+const STORE_KEY_PUBLICACIONES = 'publicacionesSincronizadas';
+let publicacionesSincronizadas = JSON.parse(localStorage.getItem(STORE_KEY_PUBLICACIONES) || '[]');
+
+function savePublicaciones(){
+  localStorage.setItem(STORE_KEY_PUBLICACIONES, JSON.stringify(publicacionesSincronizadas));
+}
+
+// Obtener despachos únicos de los procesos
+function getDespachosDeProcesos(){
+  const despachos = new Map();
+  procesos.forEach(p => {
+    if(p.despacho && p.codigoDespacho){
+      despachos.set(p.codigoDespacho, {
+        codigo: p.codigoDespacho,
+        nombre: p.despacho,
+        departamento: p.departamento || ''
+      });
+    }
+  });
+  return Array.from(despachos.values());
+}
+
+// Sincronizar publicaciones procesales de todos los despachos
+async function syncPublicacionesProcesales(){
+  const despachos = getDespachosDeProcesos();
+  if(despachos.length === 0) return false;
+  
+  console.log(`📋 Sincronizando publicaciones de ${despachos.length} despacho(s)...`);
+  
+  let nuevasPublicaciones = 0;
+  const hoy = new Date();
+  const hace7dias = new Date(hoy);
+  hace7dias.setDate(hace7dias.getDate() - 7);
+  
+  const fechaInicio = hace7dias.toISOString().split('T')[0];
+  const fechaFin = hoy.toISOString().split('T')[0];
+  
+  for(const despacho of despachos){
+    try {
+      const resultado = await consultarPublicacionesDespacho(despacho.codigo, fechaInicio, fechaFin);
+      if(resultado && resultado.documentos){
+        // Buscar documentos que coincidan con radicados de procesos
+        for(const doc of resultado.documentos){
+          const procesoVinculado = vincularDocumentoAProceso(doc);
+          if(procesoVinculado){
+            nuevasPublicaciones++;
+          }
+        }
+      }
+    } catch(err){
+      console.warn(`⚠️ Error sincronizando ${despacho.codigo}:`, err.message);
+    }
+  }
+  
+  if(nuevasPublicaciones > 0){
+    savePublicaciones();
+    saveProcesos();
+    mostrarNotificacion(`📄 ${nuevasPublicaciones} nuevo(s) documento(s) encontrado(s)`);
+    return true;
+  }
+  
+  return false;
+}
+
+// Consultar publicaciones de un despacho via proxy
+async function consultarPublicacionesDespacho(codigoDespacho, fechaInicio, fechaFin){
+  const codigoDANE = codigoDespacho.substring(0, 5);
+  const idDepto = codigoDANE.substring(0, 2);
+  const idMuni = codigoDANE;
+  
+  const deptoCategories = {
+    '05': '178847277', '08': '178847290', '11': '178847284', '13': '178847291',
+    '15': '178847292', '17': '178847293', '18': '178847294', '19': '178847295',
+    '20': '178847296', '23': '178847297', '25': '178847298', '27': '178847299',
+    '41': '178847300', '44': '178847301', '47': '178847302', '50': '178847303',
+    '52': '178847304', '54': '178847305', '63': '178847306', '66': '178847307',
+    '68': '178847308', '70': '178847309', '73': '178847310', '76': '178847311',
+    '81': '178847312', '85': '178847313', '86': '178847314', '88': '178847315',
+    '91': '178847316', '94': '178847317', '95': '178847318', '97': '178847319', '99': '178847320'
+  };
+  
+  const idDeptoCategory = deptoCategories[idDepto] || '';
+  
+  const params = new URLSearchParams();
+  params.set('fechaInicio', fechaInicio);
+  params.set('fechaFin', fechaFin);
+  params.set('idDepto', idDepto);
+  params.set('idMuni', idMuni);
+  params.set('idDespacho', codigoDespacho);
+  params.set('idDeptoIdCategory', idDeptoCategory);
+  
+  const proxyUrl = `/api/publicaciones?${params.toString()}`;
+  
+  try {
+    const response = await fetch(proxyUrl, { method: 'GET', headers: { 'Accept': 'application/json' } });
+    if(!response.ok) return null;
+    return await response.json();
+  } catch(err){
+    return null;
+  }
+}
+
+// Vincular documento a proceso por número de radicado
+function vincularDocumentoAProceso(doc){
+  // Extraer posibles números de radicado del nombre del documento
+  // Patrones: 2024-00358, -2024-00358, 2024-00094, etc.
+  const patronRadicado = /(\d{4})-?(\d{4,6})/g;
+  const matches = doc.nombre.match(patronRadicado);
+  
+  if(!matches) return null;
+  
+  for(const match of matches){
+    // Normalizar el radicado encontrado
+    const radicadoDoc = match.replace('-', '');
+    
+    // Buscar proceso con este radicado
+    for(let i = 0; i < procesos.length; i++){
+      const p = procesos[i];
+      if(!p.radicado) continue;
+      
+      // Extraer los últimos dígitos del radicado del proceso (año y número)
+      const radicadoNormalizado = p.radicado.replace(/-/g, '');
+      
+      // Verificar si coinciden (el documento puede tener solo año-número)
+      if(radicadoNormalizado.includes(radicadoDoc) || radicadoDoc.includes(radicadoNormalizado.slice(-10))){
+        // Verificar si ya está vinculado
+        if(!p.documentosPublicaciones) p.documentosPublicaciones = [];
+        
+        const yaExiste = p.documentosPublicaciones.some(d => d.url === doc.url);
+        if(yaExiste) return null;
+        
+        // Agregar documento al proceso
+        p.documentosPublicaciones.push({
+          nombre: doc.nombre,
+          url: doc.url,
+          fecha: doc.fecha || new Date().toISOString().split('T')[0],
+          fechaSincronizado: new Date().toISOString()
+        });
+        
+        console.log(`📎 Documento vinculado: ${doc.nombre} → ${p.radicado}`);
+        return p;
+      }
+    }
+  }
+  
+  return null;
+}
+
+// Mostrar notificación en el dashboard
+function mostrarNotificacion(mensaje){
+  // Crear elemento de notificación
+  const notif = document.createElement('div');
+  notif.className = 'sync-notification';
+  notif.innerHTML = `
+    <span class="notif-icon">🔔</span>
+    <span class="notif-text">${mensaje}</span>
+    <button class="notif-close">&times;</button>
+  `;
+  
+  document.body.appendChild(notif);
+  
+  // Mostrar con animación
+  setTimeout(() => notif.classList.add('show'), 10);
+  
+  // Cerrar al hacer clic
+  notif.querySelector('.notif-close').addEventListener('click', () => {
+    notif.classList.remove('show');
+    setTimeout(() => notif.remove(), 300);
+  });
+  
+  // Auto-cerrar después de 5 segundos
+  setTimeout(() => {
+    if(notif.parentElement){
+      notif.classList.remove('show');
+      setTimeout(() => notif.remove(), 300);
+    }
+  }, 5000);
 }
 
 function saveProcesos(){ localStorage.setItem(STORE_KEY_PROCESOS, JSON.stringify(procesos)); }
@@ -3346,7 +3580,15 @@ function renderDocumentosTab(proceso){
   // Filtrar actuaciones que tienen documentos
   const actuacionesConDocs = (proceso.actuaciones || []).filter(act => act.conDocumentos === true);
   
-  if(actuacionesConDocs.length === 0){
+  // Documentos de publicaciones procesales sincronizados
+  const docsPublicaciones = proceso.documentosPublicaciones || [];
+  
+  // Documentos cargados manualmente
+  const documentosCargados = proceso.documentos || [];
+  
+  const totalDocs = actuacionesConDocs.length + docsPublicaciones.length;
+  
+  if(totalDocs === 0 && documentosCargados.length === 0){
     return `
       <div class="detail-section">
         <h3 class="detail-section-title">Documentos del proceso</h3>
@@ -3362,73 +3604,117 @@ function renderDocumentosTab(proceso){
     `;
   }
   
-  // Mostrar documentos cargados o mensaje para cargar
-  const documentosCargados = proceso.documentos || [];
-  
   return `
     <div class="detail-section">
       <h3 class="detail-section-title">Documentos del proceso</h3>
-      <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px;">
-        ${actuacionesConDocs.length} actuación${actuacionesConDocs.length !== 1 ? 'es' : ''} con documentos disponibles
-      </p>
       
-      <div id="documentosContainer">
-        ${documentosCargados.length > 0 ? `
+      ${docsPublicaciones.length > 0 ? `
+        <!-- Documentos de Publicaciones Procesales -->
+        <div class="docs-section">
+          <h4 style="font-size:14px;font-weight:600;color:var(--text);margin:0 0 12px;display:flex;align-items:center;gap:8px;">
+            📋 Publicaciones Procesales
+            <span class="docs-badge">${docsPublicaciones.length}</span>
+          </h4>
+          <p style="color:var(--text-muted);font-size:12px;margin-bottom:12px;">
+            Documentos sincronizados automáticamente desde el portal de la Rama Judicial
+          </p>
           <table class="documentos-table">
             <thead>
               <tr>
                 <th style="width:110px;">Fecha</th>
-                <th>Actuación</th>
                 <th>Documento</th>
-                <th style="width:80px;">Tamaño</th>
-                <th style="width:100px;text-align:center;">Descargar</th>
+                <th style="width:130px;text-align:center;">Acciones</th>
               </tr>
             </thead>
             <tbody>
-              ${documentosCargados.map(doc => `
-                <tr>
-                  <td style="font-weight:500;color:var(--text);">${doc.fechaActuacion || '—'}</td>
-                  <td>${doc.actuacion || '—'}</td>
+              ${docsPublicaciones.map(doc => `
+                <tr class="doc-row-sync">
+                  <td style="font-weight:500;color:var(--text);">${doc.fecha || '—'}</td>
                   <td>
                     <div style="display:flex;align-items:center;gap:8px;">
-                      <span style="font-size:16px;">${doc.tipo === 'pdf' ? '📕' : '📄'}</span>
+                      <span style="font-size:16px;">📄</span>
                       <span>${doc.nombre || 'Documento'}</span>
                     </div>
                   </td>
-                  <td style="color:var(--text-muted);font-size:12px;">${doc.descripcion ? doc.descripcion.match(/tamaño: ([^,]+)/)?.[1] || '—' : '—'}</td>
                   <td style="text-align:center;">
-                    <a href="https://consultaprocesos.ramajudicial.gov.co:448/api/v2/Descarga/Documento/${doc.idRegDocumento}" 
-                       target="_blank" 
-                       class="btn" 
-                       style="font-size:12px;padding:6px 12px;display:inline-flex;align-items:center;gap:4px;text-decoration:none;">
-                      📥 Descargar
-                    </a>
+                    <button class="btn-descargar-pub" data-url="${encodeURIComponent(doc.url)}" data-nombre="${doc.nombre}" style="font-size:12px;padding:6px 12px;">
+                      ⬇️ Descargar
+                    </button>
                   </td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
-        ` : `
-          <div style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:20px;text-align:center;">
-            <p style="margin:0 0 12px;color:var(--text-muted);">Los documentos no han sido cargados aún.</p>
-            <button class="btn btn-primary" id="btnCargarDocumentos" data-procesoid="${proceso.id}">
-              🔄 Cargar documentos
-            </button>
-          </div>
-        `}
-      </div>
+        </div>
+      ` : ''}
       
-      ${documentosCargados.length > 0 ? `
-        <div style="margin-top:16px;text-align:right;">
-          <button class="btn" id="btnRecargarDocumentos" data-procesoid="${proceso.id}" style="font-size:13px;">
-            🔄 Actualizar lista
-          </button>
+      ${actuacionesConDocs.length > 0 || documentosCargados.length > 0 ? `
+        <!-- Documentos de Actuaciones -->
+        <div class="docs-section" style="margin-top:${docsPublicaciones.length > 0 ? '24px' : '0'};">
+          <h4 style="font-size:14px;font-weight:600;color:var(--text);margin:0 0 12px;display:flex;align-items:center;gap:8px;">
+            📁 Documentos de Actuaciones
+            ${actuacionesConDocs.length > 0 ? `<span style="font-size:12px;color:var(--text-muted);font-weight:400;">(${actuacionesConDocs.length} disponibles)</span>` : ''}
+          </h4>
+          
+          <div id="documentosContainer">
+            ${documentosCargados.length > 0 ? `
+              <table class="documentos-table">
+                <thead>
+                  <tr>
+                    <th style="width:110px;">Fecha</th>
+                    <th>Actuación</th>
+                    <th>Documento</th>
+                    <th style="width:80px;">Tamaño</th>
+                    <th style="width:100px;text-align:center;">Descargar</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${documentosCargados.map(doc => `
+                    <tr>
+                      <td style="font-weight:500;color:var(--text);">${doc.fechaActuacion || '—'}</td>
+                      <td>${doc.actuacion || '—'}</td>
+                      <td>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                          <span style="font-size:16px;">${doc.tipo === 'pdf' ? '📕' : '📄'}</span>
+                          <span>${doc.nombre || 'Documento'}</span>
+                        </div>
+                      </td>
+                      <td style="color:var(--text-muted);font-size:12px;">${doc.descripcion ? doc.descripcion.match(/tamaño: ([^,]+)/)?.[1] || '—' : '—'}</td>
+                      <td style="text-align:center;">
+                        <a href="https://consultaprocesos.ramajudicial.gov.co:448/api/v2/Descarga/Documento/${doc.idRegDocumento}" 
+                           target="_blank" 
+                           class="btn" 
+                           style="font-size:12px;padding:6px 12px;display:inline-flex;align-items:center;gap:4px;text-decoration:none;">
+                          📥 Descargar
+                        </a>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            ` : actuacionesConDocs.length > 0 ? `
+              <div style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:20px;text-align:center;">
+                <p style="margin:0 0 12px;color:var(--text-muted);">Los documentos de actuaciones no han sido cargados aún.</p>
+                <button class="btn btn-primary" id="btnCargarDocumentos" data-procesoid="${proceso.id}">
+                  🔄 Cargar documentos
+                </button>
+              </div>
+            ` : ''}
+          </div>
+          
+          ${documentosCargados.length > 0 ? `
+            <div style="margin-top:16px;text-align:right;">
+              <button class="btn" id="btnRecargarDocumentos" data-procesoid="${proceso.id}" style="font-size:13px;">
+                🔄 Actualizar lista
+              </button>
+            </div>
+          ` : ''}
         </div>
       ` : ''}
       
       <div style="margin-top:20px;padding:16px;background:#ecfdf5;border-radius:8px;border:1px solid #a7f3d0;">
         <p style="font-size:13px;color:#065f46;margin:0;">
-          ✅ Los documentos se descargan directamente desde el servidor de la Rama Judicial.
+          ✅ Los documentos se sincronizan automáticamente cada 5 minutos desde el portal de la Rama Judicial.
         </p>
       </div>
     </div>
@@ -6003,6 +6289,47 @@ function bindContentEvents(){
       await cargarDocumentosProceso(procesoId);
     });
   }
+  
+  // Descargar documentos de publicaciones procesales
+  document.querySelectorAll('.btn-descargar-pub').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const url = decodeURIComponent(btn.dataset.url);
+      const nombre = btn.dataset.nombre;
+      
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Descargando...';
+      
+      try {
+        const proxyUrl = `/api/documento?url=${encodeURIComponent(url)}`;
+        const response = await fetch(proxyUrl);
+        
+        if(!response.ok) throw new Error(`Error ${response.status}`);
+        
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = nombre;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(downloadUrl);
+        
+        btn.innerHTML = '✅ Listo';
+        setTimeout(() => {
+          btn.disabled = false;
+          btn.innerHTML = '⬇️ Descargar';
+        }, 2000);
+      } catch(err){
+        console.error('[Descarga] Error:', err);
+        btn.innerHTML = '❌ Error';
+        setTimeout(() => {
+          btn.disabled = false;
+          btn.innerHTML = '⬇️ Descargar';
+        }, 2000);
+      }
+    });
+  });
   
   // Recargar documentos button
   const btnRecargarDocumentos = document.getElementById('btnRecargarDocumentos');
