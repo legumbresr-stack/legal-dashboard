@@ -1017,6 +1017,17 @@
   .publicaciones-instrucciones .instrucciones-text li{margin-bottom:4px;}
   .publicaciones-instrucciones .btn-close-instrucciones{background:none;border:none;cursor:pointer;font-size:16px;color:#92400e;padding:4px;flex-shrink:0;}
   .publicaciones-instrucciones .btn-close-instrucciones:hover{color:#78350f;}
+  .publicaciones-resultados{margin-bottom:24px;}
+  .publicaciones-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;}
+  .publicaciones-loading p{margin:12px 0 0;color:var(--text-muted);font-size:13px;}
+  .loading-spinner{width:32px;height:32px;border:3px solid #e2e8f0;border-top-color:#3b82f6;border-radius:50%;animation:spin 0.8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .publicaciones-iframe-container{border:1px solid var(--border);border-radius:8px;overflow:hidden;background:#fff;}
+  .publicaciones-iframe{width:100%;height:600px;border:none;}
+  .publicaciones-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:8px;text-align:center;}
+  .publicaciones-empty .empty-icon{font-size:32px;margin-bottom:8px;opacity:0.5;}
+  .publicaciones-empty p{margin:0;color:var(--text-muted);font-size:13px;}
+  .publicaciones-actions{display:flex;gap:12px;}
   
   /* Despacho Sync */
   .despacho-detail-sync{padding:20px 0;}
@@ -4171,7 +4182,7 @@ function renderDespachoDetail(){
             <div class="publicaciones-oficial-icon">🔍</div>
             <div class="publicaciones-oficial-info">
               <h4>Consulta de Publicaciones Procesales</h4>
-              <p>Consulta las publicaciones procesales oficiales de este despacho en el portal de la Rama Judicial.</p>
+              <p>Consulta las publicaciones procesales oficiales de este despacho directamente desde el portal de la Rama Judicial.</p>
             </div>
           </div>
           <div class="publicaciones-filtros">
@@ -4199,9 +4210,27 @@ function renderDespachoDetail(){
             </div>
           </div>
           <div class="publicaciones-actions">
-            <button class="btn btn-primary" id="btnConsultarPublicaciones" data-codigo="${codigoConCero}" data-depto="${departamento}" data-muni="${municipio}">
-              🌐 Consultar en Portal Oficial
+            <button class="btn btn-primary" id="btnCargarPublicaciones" data-codigo="${codigoConCero}">
+              📥 Cargar Publicaciones
             </button>
+            <button class="btn" id="btnAbrirPortal" data-codigo="${codigoConCero}">
+              🌐 Abrir en Portal
+            </button>
+          </div>
+        </div>
+        
+        <!-- Contenedor de resultados -->
+        <div id="publicacionesResultados" class="publicaciones-resultados">
+          <div class="publicaciones-loading" style="display:none;">
+            <div class="loading-spinner"></div>
+            <p>Cargando publicaciones procesales...</p>
+          </div>
+          <div class="publicaciones-iframe-container" style="display:none;">
+            <iframe id="iframePublicaciones" class="publicaciones-iframe" sandbox="allow-same-origin allow-scripts allow-forms"></iframe>
+          </div>
+          <div class="publicaciones-empty">
+            <div class="empty-icon">📋</div>
+            <p>Selecciona las fechas y haz clic en "Cargar Publicaciones" para consultar.</p>
           </div>
         </div>
         
@@ -5047,7 +5076,8 @@ function bindContentEvents(){
   }
   
   // ======= CONSULTAR PUBLICACIONES PROCESALES =======
-  const btnConsultarPublicaciones = document.getElementById('btnConsultarPublicaciones');
+  const btnCargarPublicaciones = document.getElementById('btnCargarPublicaciones');
+  const btnAbrirPortal = document.getElementById('btnAbrirPortal');
   const pubFechaInicio = document.getElementById('pubFechaInicio');
   const pubFechaFin = document.getElementById('pubFechaFin');
   
@@ -5060,18 +5090,49 @@ function bindContentEvents(){
     pubFechaFin.value = hoy.toISOString().split('T')[0];
   }
   
-  if(btnConsultarPublicaciones){
-    btnConsultarPublicaciones.addEventListener('click', () => {
-      const codigoDespacho = btnConsultarPublicaciones.dataset.codigo || '';
-      
-      // Extraer códigos DANE del código de despacho
-      // Código despacho: DANE(5) + Corporación(2) + Especialidad(2) + Consecutivo(3) = 12 dígitos
-      // Ejemplo: 080013110006 -> idDepto=08, idMuni=08001
-      const codigoDANE = codigoDespacho.substring(0, 5); // 08001
-      const idDepto = codigoDANE.substring(0, 2); // 08
-      const idMuni = codigoDANE; // 08001
-      
-      // Obtener fechas de los inputs
+  // Mapeo de códigos de departamento a IDs de categoría
+  const deptoCategories = {
+    '05': '178847277', '08': '178847290', '11': '178847284', '13': '178847291',
+    '15': '178847292', '17': '178847293', '18': '178847294', '19': '178847295',
+    '20': '178847296', '23': '178847297', '25': '178847298', '27': '178847299',
+    '41': '178847300', '44': '178847301', '47': '178847302', '50': '178847303',
+    '52': '178847304', '54': '178847305', '63': '178847306', '66': '178847307',
+    '68': '178847308', '70': '178847309', '73': '178847310', '76': '178847311',
+    '81': '178847312', '85': '178847313', '86': '178847314', '88': '178847315',
+    '91': '178847316', '94': '178847317', '95': '178847318', '97': '178847319', '99': '178847320'
+  };
+  
+  // Función para construir la URL de publicaciones
+  function buildPublicacionesUrl(codigoDespacho, fechaInicio, fechaFin){
+    const codigoDANE = codigoDespacho.substring(0, 5);
+    const idDepto = codigoDANE.substring(0, 2);
+    const idMuni = codigoDANE;
+    const idDeptoCategory = deptoCategories[idDepto] || '';
+    
+    const portletId = 'co_com_avanti_efectosProcesales_PublicacionesEfectosProcesalesPortletV2_INSTANCE_BIyXQFHVaYaq';
+    const baseUrl = 'https://publicacionesprocesales.ramajudicial.gov.co/web/publicaciones-procesales/inicio';
+    
+    const params = new URLSearchParams();
+    params.set('p_p_id', portletId);
+    params.set('p_p_lifecycle', '0');
+    params.set('p_p_state', 'normal');
+    params.set('p_p_mode', 'view');
+    params.set(`_${portletId}_action`, 'busqueda');
+    params.set(`_${portletId}_fechaInicio`, fechaInicio);
+    params.set(`_${portletId}_fechaFin`, fechaFin);
+    params.set(`_${portletId}_idDepto`, idDepto);
+    params.set(`_${portletId}_idMuni`, idMuni);
+    params.set(`_${portletId}_idDespacho`, codigoDespacho);
+    params.set(`_${portletId}_verTotales`, 'true');
+    if(idDeptoCategory) params.set(`_${portletId}_idDeptoIdCategory`, idDeptoCategory);
+    
+    return `${baseUrl}?${params.toString()}`;
+  }
+  
+  // Botón: Cargar Publicaciones (iframe)
+  if(btnCargarPublicaciones){
+    btnCargarPublicaciones.addEventListener('click', () => {
+      const codigoDespacho = btnCargarPublicaciones.dataset.codigo || '';
       const fechaInicio = pubFechaInicio ? pubFechaInicio.value : '';
       const fechaFin = pubFechaFin ? pubFechaFin.value : '';
       
@@ -5080,67 +5141,46 @@ function bindContentEvents(){
         return;
       }
       
-      // Mapeo de códigos de departamento a IDs de categoría (necesarios para la API)
-      const deptoCategories = {
-        '05': '178847277', // Antioquia
-        '08': '178847290', // Atlántico
-        '11': '178847284', // Bogotá
-        '13': '178847291', // Bolívar
-        '15': '178847292', // Boyacá
-        '17': '178847293', // Caldas
-        '18': '178847294', // Caquetá
-        '19': '178847295', // Cauca
-        '20': '178847296', // Cesar
-        '23': '178847297', // Córdoba
-        '25': '178847298', // Cundinamarca
-        '27': '178847299', // Chocó
-        '41': '178847300', // Huila
-        '44': '178847301', // La Guajira
-        '47': '178847302', // Magdalena
-        '50': '178847303', // Meta
-        '52': '178847304', // Nariño
-        '54': '178847305', // Norte de Santander
-        '63': '178847306', // Quindío
-        '66': '178847307', // Risaralda
-        '68': '178847308', // Santander
-        '70': '178847309', // Sucre
-        '73': '178847310', // Tolima
-        '76': '178847311', // Valle del Cauca
-        '81': '178847312', // Arauca
-        '85': '178847313', // Casanare
-        '86': '178847314', // Putumayo
-        '88': '178847315', // San Andrés
-        '91': '178847316', // Amazonas
-        '94': '178847317', // Guainía
-        '95': '178847318', // Guaviare
-        '97': '178847319', // Vaupés
-        '99': '178847320'  // Vichada
-      };
+      const url = buildPublicacionesUrl(codigoDespacho, fechaInicio, fechaFin);
       
-      const idDeptoCategory = deptoCategories[idDepto] || '';
-      
-      // Construir URL con parámetros
-      const portletId = 'co_com_avanti_efectosProcesales_PublicacionesEfectosProcesalesPortletV2_INSTANCE_BIyXQFHVaYaq';
-      const baseUrl = 'https://publicacionesprocesales.ramajudicial.gov.co/web/publicaciones-procesales/inicio';
-      
-      const params = new URLSearchParams();
-      params.set('p_p_id', portletId);
-      params.set('p_p_lifecycle', '0');
-      params.set('p_p_state', 'normal');
-      params.set('p_p_mode', 'view');
-      params.set(`_${portletId}_action`, 'busqueda');
-      params.set(`_${portletId}_fechaInicio`, fechaInicio);
-      params.set(`_${portletId}_fechaFin`, fechaFin);
-      params.set(`_${portletId}_idDepto`, idDepto);
-      params.set(`_${portletId}_idMuni`, idMuni);
-      params.set(`_${portletId}_idDespacho`, codigoDespacho);
-      params.set(`_${portletId}_verTotales`, 'true');
-      if(idDeptoCategory){
-        params.set(`_${portletId}_idDeptoIdCategory`, idDeptoCategory);
+      // Mostrar loading
+      const resultados = document.getElementById('publicacionesResultados');
+      if(resultados){
+        resultados.querySelector('.publicaciones-empty').style.display = 'none';
+        resultados.querySelector('.publicaciones-loading').style.display = 'flex';
+        resultados.querySelector('.publicaciones-iframe-container').style.display = 'none';
       }
       
-      const fullUrl = `${baseUrl}?${params.toString()}`;
-      window.open(fullUrl, '_blank', 'noopener,noreferrer');
+      // Cargar iframe después de un pequeño delay
+      setTimeout(() => {
+        const iframe = document.getElementById('iframePublicaciones');
+        if(iframe){
+          iframe.src = url;
+          iframe.onload = () => {
+            if(resultados){
+              resultados.querySelector('.publicaciones-loading').style.display = 'none';
+              resultados.querySelector('.publicaciones-iframe-container').style.display = 'block';
+            }
+          };
+        }
+      }, 500);
+    });
+  }
+  
+  // Botón: Abrir en Portal (nueva ventana)
+  if(btnAbrirPortal){
+    btnAbrirPortal.addEventListener('click', () => {
+      const codigoDespacho = btnAbrirPortal.dataset.codigo || '';
+      const fechaInicio = pubFechaInicio ? pubFechaInicio.value : '';
+      const fechaFin = pubFechaFin ? pubFechaFin.value : '';
+      
+      if(!fechaInicio || !fechaFin){
+        alert('Por favor selecciona las fechas de inicio y fin');
+        return;
+      }
+      
+      const url = buildPublicacionesUrl(codigoDespacho, fechaInicio, fechaFin);
+      window.open(url, '_blank', 'noopener,noreferrer');
     });
   }
   
