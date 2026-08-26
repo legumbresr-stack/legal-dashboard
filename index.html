@@ -1,4 +1,4 @@
-<!-- Build: 1787661092 -->
+<!-- Build: 1787661093 -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -2996,9 +2996,6 @@ function renderDocumentosTab(proceso){
   // Filtrar actuaciones que tienen documentos
   const actuacionesConDocs = (proceso.actuaciones || []).filter(act => act.conDocumentos === true);
   
-  // URL base para ver el proceso en Rama Judicial
-  const ramaUrl = `https://consultaprocesos.ramajudicial.gov.co/Procesos/FichaProcesoDescarga?IdProceso=${proceso.idProceso || ''}&RadProceso=${proceso.radicado || ''}`;
-  
   if(actuacionesConDocs.length === 0){
     return `
       <div class="detail-section">
@@ -3008,14 +3005,15 @@ function renderDocumentosTab(proceso){
           <div class="actuaciones-empty-title">No hay documentos disponibles</div>
           <div class="actuaciones-empty-desc">
             Las actuaciones de este proceso no tienen documentos adjuntos, o aún no se han sincronizado.<br><br>
-            <a href="${ramaUrl}" target="_blank" class="documento-link" style="font-size:14px;">
-              🔗 Ver proceso en Rama Judicial →
-            </a>
+            Haz clic en "Sincronizar ahora" en la pestaña Sincronización para actualizar.
           </div>
         </div>
       </div>
     `;
   }
+  
+  // Mostrar documentos cargados o mensaje para cargar
+  const documentosCargados = proceso.documentos || [];
   
   return `
     <div class="detail-section">
@@ -3024,43 +3022,130 @@ function renderDocumentosTab(proceso){
         ${actuacionesConDocs.length} actuación${actuacionesConDocs.length !== 1 ? 'es' : ''} con documentos disponibles
       </p>
       
-      <table class="documentos-table">
-        <thead>
-          <tr>
-            <th style="width:110px;">Fecha</th>
-            <th>Actuación</th>
-            <th>Anotación</th>
-            <th style="width:120px;text-align:center;">Documento</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${actuacionesConDocs.map(act => {
-            // URL para ver el documento en la página de Rama Judicial
-            const docUrl = `https://consultaprocesos.ramajudicial.gov.co/Procesos/FichaProcesoDescarga?IdProceso=${proceso.idProceso || ''}&RadProceso=${proceso.radicado || ''}#actuacion-${act.idRegActuacion || ''}`;
-            return `
+      <div id="documentosContainer">
+        ${documentosCargados.length > 0 ? `
+          <table class="documentos-table">
+            <thead>
               <tr>
-                <td style="font-weight:500;color:var(--text);">${act.fecha || '—'}</td>
-                <td>${act.actuacion || '—'}</td>
-                <td style="color:var(--text-muted);font-size:12px;">${act.anotacion || '—'}</td>
-                <td style="text-align:center;">
-                  <a href="${ramaUrl}" target="_blank" class="btn" style="font-size:12px;padding:6px 12px;display:inline-flex;align-items:center;gap:4px;">
-                    📥 Ver
-                  </a>
-                </td>
+                <th style="width:110px;">Fecha</th>
+                <th>Actuación</th>
+                <th>Documento</th>
+                <th style="width:80px;">Tamaño</th>
+                <th style="width:100px;text-align:center;">Descargar</th>
               </tr>
-            `;
-          }).join('')}
-        </tbody>
-      </table>
+            </thead>
+            <tbody>
+              ${documentosCargados.map(doc => `
+                <tr>
+                  <td style="font-weight:500;color:var(--text);">${doc.fechaActuacion || '—'}</td>
+                  <td>${doc.actuacion || '—'}</td>
+                  <td>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                      <span style="font-size:16px;">${doc.tipo === 'pdf' ? '📕' : '📄'}</span>
+                      <span>${doc.nombre || 'Documento'}</span>
+                    </div>
+                  </td>
+                  <td style="color:var(--text-muted);font-size:12px;">${doc.descripcion ? doc.descripcion.match(/tamaño: ([^,]+)/)?.[1] || '—' : '—'}</td>
+                  <td style="text-align:center;">
+                    <a href="https://consultaprocesos.ramajudicial.gov.co:448/api/v2/Descarga/Documento/${doc.idRegDocumento}" 
+                       target="_blank" 
+                       class="btn" 
+                       style="font-size:12px;padding:6px 12px;display:inline-flex;align-items:center;gap:4px;text-decoration:none;">
+                      📥 Descargar
+                    </a>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        ` : `
+          <div style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:20px;text-align:center;">
+            <p style="margin:0 0 12px;color:var(--text-muted);">Los documentos no han sido cargados aún.</p>
+            <button class="btn btn-primary" id="btnCargarDocumentos" data-procesoid="${proceso.id}">
+              🔄 Cargar documentos
+            </button>
+          </div>
+        `}
+      </div>
       
-      <div style="margin-top:20px;padding:16px;background:#f8fafc;border-radius:8px;border:1px solid var(--border);">
-        <p style="font-size:13px;color:var(--text-muted);margin:0;">
-          💡 <strong>Nota:</strong> Los documentos se descargan directamente desde el portal de la Rama Judicial. 
-          Al hacer clic en "Ver", serás redirigido al portal oficial donde podrás descargar el documento.
+      ${documentosCargados.length > 0 ? `
+        <div style="margin-top:16px;text-align:right;">
+          <button class="btn" id="btnRecargarDocumentos" data-procesoid="${proceso.id}" style="font-size:13px;">
+            🔄 Actualizar lista
+          </button>
+        </div>
+      ` : ''}
+      
+      <div style="margin-top:20px;padding:16px;background:#ecfdf5;border-radius:8px;border:1px solid #a7f3d0;">
+        <p style="font-size:13px;color:#065f46;margin:0;">
+          ✅ Los documentos se descargan directamente desde el servidor de la Rama Judicial.
         </p>
       </div>
     </div>
   `;
+}
+
+// Función para cargar documentos de las actuaciones
+async function cargarDocumentosProceso(procesoId){
+  const proceso = procesos.find(p => p.id === procesoId);
+  if(!proceso) return;
+  
+  const actuacionesConDocs = (proceso.actuaciones || []).filter(act => act.conDocumentos === true && act.idRegActuacion);
+  
+  if(actuacionesConDocs.length === 0){
+    alert('No hay actuaciones con documentos para cargar.');
+    return;
+  }
+  
+  // Mostrar loading
+  const container = document.getElementById('documentosContainer');
+  if(container){
+    container.innerHTML = `
+      <div style="text-align:center;padding:40px;">
+        <div class="spinner"></div>
+        <p style="margin-top:12px;color:var(--text-muted);">Cargando documentos...</p>
+      </div>
+    `;
+  }
+  
+  // Array para guardar todos los documentos
+  let todosDocumentos = [];
+  
+  for(const act of actuacionesConDocs){
+    try {
+      const url = `https://consultaprocesos.ramajudicial.gov.co:448/api/v2/Proceso/DocumentosActuacion/${act.idRegActuacion}`;
+      const response = await fetchWithCorsProxy(url);
+      
+      if(response.ok){
+        const docs = await response.json();
+        if(Array.isArray(docs) && docs.length > 0){
+          // Agregar info de la actuación a cada documento
+          docs.forEach(doc => {
+            todosDocumentos.push({
+              ...doc,
+              fechaActuacion: act.fecha,
+              actuacion: act.actuacion
+            });
+          });
+        }
+      }
+    } catch(e){
+      console.log('Error cargando documentos de actuación:', act.idRegActuacion, e);
+    }
+  }
+  
+  // Guardar documentos en el proceso
+  proceso.documentos = todosDocumentos;
+  saveProcesos();
+  
+  // Re-renderizar
+  render();
+  
+  if(todosDocumentos.length === 0){
+    alert('No se encontraron documentos disponibles.');
+  } else {
+    console.log(`Se cargaron ${todosDocumentos.length} documento(s)`);
+  }
 }
 
 function renderSincronizacionTab(proceso){
@@ -4359,6 +4444,28 @@ function bindContentEvents(){
         saveProcesos();
         render();
       }
+    });
+  }
+  
+  // Cargar documentos button
+  const btnCargarDocumentos = document.getElementById('btnCargarDocumentos');
+  if(btnCargarDocumentos){
+    btnCargarDocumentos.addEventListener('click', async () => {
+      const procesoId = btnCargarDocumentos.dataset.procesoid;
+      btnCargarDocumentos.disabled = true;
+      btnCargarDocumentos.textContent = '🔄 Cargando...';
+      await cargarDocumentosProceso(procesoId);
+    });
+  }
+  
+  // Recargar documentos button
+  const btnRecargarDocumentos = document.getElementById('btnRecargarDocumentos');
+  if(btnRecargarDocumentos){
+    btnRecargarDocumentos.addEventListener('click', async () => {
+      const procesoId = btnRecargarDocumentos.dataset.procesoid;
+      btnRecargarDocumentos.disabled = true;
+      btnRecargarDocumentos.textContent = '🔄 Actualizando...';
+      await cargarDocumentosProceso(procesoId);
     });
   }
   
