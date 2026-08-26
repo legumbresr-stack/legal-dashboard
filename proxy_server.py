@@ -158,36 +158,44 @@ def parse_publicaciones_html(html_content):
             documentos.append(doc)
     
     # ===== EXTRAER DE TABLAS DE DOCUMENTOS =====
-    # Buscar filas de tabla con documentos
-    # Patrón: <tr>...<a href="...pdf">nombre.pdf</a>...<td>fecha</td>...</tr>
-    pattern_doc_row = r'<tr[^>]*>.*?<a[^>]*href=["\']([^"\']*\.pdf[^"\']*)["\'][^>]*>([^<]+)</a>.*?</tr>'
-    doc_rows = re.findall(pattern_doc_row, html_content, re.IGNORECASE | re.DOTALL)
+    # Patrón más específico para tablas con documentos del tipo "202500338 - DG.pdf"
+    # Buscar todos los enlaces que contienen .pdf con su texto
+    pattern_link_pdf = r'<a[^>]*href=["\']([^"\']+)["\'][^>]*>([^<]*\.pdf)</a>'
+    link_matches = re.findall(pattern_link_pdf, html_content, re.IGNORECASE)
     
-    for url, nombre in doc_rows:
+    for url, nombre in link_matches:
         if url.startswith('/'):
             full_url = DOCS_BASE_URL + url
         else:
             full_url = url
             
-        nombre_limpio = re.sub(r'<[^>]+>', '', nombre).strip()
+        nombre_limpio = nombre.strip()
         
-        # Buscar fecha en la misma fila
+        # Buscar fecha en el contexto cercano (siguiente columna de tabla)
         fecha = ''
-        row_match = re.search(rf'<tr[^>]*>.*?{re.escape(url)}.*?</tr>', html_content, re.IGNORECASE | re.DOTALL)
-        if row_match:
-            fecha_match = re.search(r'(\d{2}-\w{3}-\d{4}\s+\d{2}:\d{2}:\d{2}|\d{4}-\d{2}-\d{2})', row_match.group(0))
-            if fecha_match:
-                fecha = fecha_match.group(1)
+        # Buscar patrón de fecha cerca del enlace: dd-mmm-yyyy hh:mm:ss
+        fecha_pattern = rf'{re.escape(nombre)}.*?(\d{{2}}-\w{{3}}-\d{{4}}\s+\d{{1,2}}:\d{{2}}:\d{{2}})'
+        fecha_match = re.search(fecha_pattern, html_content, re.IGNORECASE | re.DOTALL)
+        if fecha_match:
+            fecha = fecha_match.group(1)
         
         doc = {
             'nombre': nombre_limpio,
             'url': full_url,
             'fecha': fecha,
-            'tipo': 'PDF'
+            'tipo': 'PDF',
+            'esDocumentoExpediente': bool(re.match(r'^\d{9}\s*-', nombre_limpio))  # Marcar si es tipo "202500338 - DG.pdf"
         }
         
         if not any(d.get('url') == doc['url'] for d in documentos):
             documentos.append(doc)
+            print(f'[Parser] Documento encontrado: {nombre_limpio}')
+    
+    # ===== BUSCAR ESPECÍFICAMENTE DOCUMENTOS DE EXPEDIENTE (XXXXXXXXX - XX.pdf) =====
+    # Patrón para documentos tipo "202500338 - DG.pdf" o "202300036 - DG.pdf"
+    pattern_expediente = r'(\d{9})\s*-\s*\w+\.pdf'
+    expediente_matches = re.findall(pattern_expediente, html_content, re.IGNORECASE)
+    print(f'[Parser] Códigos de expediente encontrados: {expediente_matches}')
     
     # ===== EXTRAER PUBLICACIONES (resumen) =====
     # Patrón 1: Notificación por Estado
@@ -238,6 +246,8 @@ def parse_publicaciones_html(html_content):
             # Si el documento menciona el mismo número de estado
             if pub.get('numero') and pub['numero'] in doc['nombre']:
                 pub['documentos'].append(doc)
+    
+    print(f'[Parser] Total: {len(publicaciones)} publicaciones, {len(documentos)} documentos')
     
     return {
         'publicaciones': publicaciones,
