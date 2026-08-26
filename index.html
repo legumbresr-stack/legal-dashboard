@@ -880,6 +880,8 @@
   .despacho-nombre-link{color:#d97706;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;}
   .despacho-nombre-link:hover{text-decoration:underline;}
   .despacho-codigo{color:#3b82f6;font-family:monospace;font-size:12px;}
+  .despacho-codigo-link{color:#3b82f6;cursor:pointer;text-decoration:underline;}
+  .despacho-codigo-link:hover{color:#1d4ed8;}
   .despacho-especialidad{color:#d97706;font-weight:500;}
   .despacho-tipo{color:var(--text-muted);font-size:12px;}
   
@@ -3860,7 +3862,7 @@ function renderDespachos(){
                     <td class="despacho-nombre-cell">
                       <span class="despacho-nombre-link">${d.nombre || '—'}</span>
                     </td>
-                    <td class="despacho-codigo">${d.codigo || '—'}</td>
+                    <td class="despacho-codigo"><span class="despacho-codigo-link" data-codigo="${d.codigo || ''}">${d.codigo || '—'}</span></td>
                     <td>${d.municipio || '—'}</td>
                     <td class="despacho-especialidad">${d.especialidad || '—'}</td>
                     <td class="despacho-tipo">${d.tipo || '—'}</td>
@@ -4854,8 +4856,24 @@ function bindContentEvents(){
   
   // ======= CLICK EN FILA DE DESPACHO =======
   document.querySelectorAll('.despacho-row').forEach(row => {
-    row.addEventListener('click', () => {
+    row.addEventListener('click', (e) => {
+      // Si hizo clic en el código, no propagar el evento de la fila
+      if(e.target.classList.contains('despacho-codigo-link')) return;
+      
       const codigo = row.dataset.codigo;
+      if(codigo){
+        selectedDespachoId = codigo;
+        selectedDespachoTab = 'informacion';
+        render();
+      }
+    });
+  });
+  
+  // ======= CLICK EN CÓDIGO DE DESPACHO =======
+  document.querySelectorAll('.despacho-codigo-link').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.stopPropagation(); // Evitar que se propague al row
+      const codigo = link.dataset.codigo;
       if(codigo){
         selectedDespachoId = codigo;
         selectedDespachoTab = 'informacion';
