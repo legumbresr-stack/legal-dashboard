@@ -1029,6 +1029,37 @@
   .publicaciones-empty p{margin:0;color:var(--text-muted);font-size:13px;}
   .publicaciones-actions{display:flex;gap:12px;}
   
+  /* Nuevos estilos para resultados de publicaciones */
+  .publicaciones-resultados-area{margin-top:24px;}
+  .publicaciones-resultados-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding:12px 16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;}
+  .publicaciones-resultados-header h4{margin:0;font-size:15px;font-weight:600;color:#15803d;}
+  .publicaciones-resultados-header .resultados-count{font-size:13px;color:#166534;font-weight:500;}
+  .publicaciones-error{background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:24px;margin-bottom:16px;}
+  .publicaciones-error .error-icon{font-size:32px;text-align:center;margin-bottom:12px;}
+  .publicaciones-error .error-content{text-align:center;}
+  .publicaciones-error .error-content h4{margin:0 0 8px;font-size:16px;color:#dc2626;}
+  .publicaciones-error .error-content p{margin:0 0 16px;font-size:13px;color:#7f1d1d;}
+  .publicaciones-error .error-instrucciones{text-align:left;background:#fff;border-radius:8px;padding:16px;margin:16px 0;border:1px solid #fecaca;}
+  .publicaciones-error .error-instrucciones strong{display:block;margin-bottom:8px;color:#991b1b;}
+  .publicaciones-error .error-instrucciones ol{margin:0;padding-left:20px;color:#7f1d1d;font-size:13px;}
+  .publicaciones-error .error-instrucciones li{margin-bottom:4px;}
+  .publicaciones-error .error-instrucciones code{background:#fee2e2;padding:2px 6px;border-radius:4px;font-family:monospace;font-size:12px;}
+  .publicaciones-error .btn{margin-right:8px;}
+  .publicaciones-tabla-container{background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+  .publicaciones-table{width:100%;border-collapse:collapse;}
+  .publicaciones-table th{text-align:left;font-size:12px;font-weight:600;color:var(--text-muted);padding:12px 16px;background:#f9fafb;border-bottom:1px solid var(--border);}
+  .publicaciones-table td{padding:14px 16px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:top;}
+  .publicaciones-table tr:last-child td{border-bottom:none;}
+  .publicaciones-table tr:hover{background:#f9fafb;}
+  .publicaciones-table .pub-titulo{color:var(--text);font-weight:500;max-width:400px;}
+  .publicaciones-table .pub-fecha{color:var(--text-muted);white-space:nowrap;}
+  .publicaciones-table .pub-tipo{display:inline-block;padding:3px 8px;background:#e0f2fe;color:#0369a1;border-radius:4px;font-size:11px;font-weight:500;}
+  .publicaciones-table .pub-enlace{color:var(--accent);text-decoration:none;font-size:12px;}
+  .publicaciones-table .pub-enlace:hover{text-decoration:underline;}
+  .publicaciones-empty-results{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:8px;text-align:center;}
+  .publicaciones-empty-results .empty-icon{font-size:32px;margin-bottom:8px;opacity:0.5;}
+  .publicaciones-empty-results p{margin:0;color:var(--text-muted);font-size:13px;}
+  
   /* Despacho Sync */
   .despacho-detail-sync{padding:20px 0;}
   .sync-info-card{display:flex;align-items:flex-start;gap:16px;padding:20px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;margin-bottom:24px;}
@@ -4195,8 +4226,8 @@ function renderDespachoDetail(){
               <span class="filtro-value">${municipio}</span>
             </div>
             <div class="filtro-item">
-              <span class="filtro-label">Código despacho:</span>
-              <span class="filtro-value">${codigoConCero}</span>
+              <span class="filtro-label">Despacho:</span>
+              <span class="filtro-value">${codigoConCero} - ${nombre}</span>
             </div>
           </div>
           <div class="publicaciones-fechas">
@@ -4210,27 +4241,60 @@ function renderDespachoDetail(){
             </div>
           </div>
           <div class="publicaciones-actions">
-            <button class="btn btn-primary" id="btnCargarPublicaciones" data-codigo="${codigoConCero}">
-              📥 Cargar Publicaciones
+            <button class="btn btn-primary btn-lg" id="btnConsultarPublicaciones" data-codigo="${codigoConCero}" data-depto="${codigo.substring(0,2)}" data-muni="${codigo.substring(0,5)}">
+              🔄 Consultar Publicaciones
             </button>
-            <button class="btn" id="btnAbrirPortal" data-codigo="${codigoConCero}">
-              🌐 Abrir en Portal
+            <button class="btn btn-lg" id="btnAbrirPortalExterno" data-codigo="${codigoConCero}">
+              ↗ Abrir en Portal
             </button>
           </div>
         </div>
         
-        <!-- Contenedor de resultados -->
-        <div id="publicacionesResultados" class="publicaciones-resultados">
-          <div class="publicaciones-loading" style="display:none;">
+        <!-- Área de resultados de publicaciones -->
+        <div id="publicacionesResultadosArea" class="publicaciones-resultados-area">
+          <div class="publicaciones-resultados-header" id="publicacionesHeader" style="display:none;">
+            <h4>📋 Publicaciones encontradas</h4>
+            <span class="resultados-count" id="publicacionesCount">0 resultados</span>
+          </div>
+          <div class="publicaciones-loading" id="publicacionesLoading" style="display:none;">
             <div class="loading-spinner"></div>
-            <p>Cargando publicaciones procesales...</p>
+            <p>Consultando publicaciones procesales...</p>
           </div>
-          <div class="publicaciones-iframe-container" style="display:none;">
-            <iframe id="iframePublicaciones" class="publicaciones-iframe" sandbox="allow-same-origin allow-scripts allow-forms"></iframe>
+          <div class="publicaciones-error" id="publicacionesError" style="display:none;">
+            <div class="error-icon">⚠️</div>
+            <div class="error-content">
+              <h4>No se pudo conectar con el servidor proxy</h4>
+              <p>Para consultar publicaciones procesales sin salir del dashboard, necesitas ejecutar el servidor proxy local.</p>
+              <div class="error-instrucciones">
+                <strong>Instrucciones:</strong>
+                <ol>
+                  <li>Abre una terminal en la carpeta del proyecto</li>
+                  <li>Ejecuta: <code>python proxy_server.py</code></li>
+                  <li>Abre <a href="http://localhost:8000" target="_blank">http://localhost:8000</a></li>
+                  <li>Vuelve a intentar la consulta</li>
+                </ol>
+              </div>
+              <button class="btn" id="btnReintentarPublicaciones">🔄 Reintentar</button>
+              <button class="btn btn-primary" id="btnAbrirPortalFallback" data-codigo="${codigoConCero}">↗ Abrir en Portal (alternativa)</button>
+            </div>
           </div>
-          <div class="publicaciones-empty">
-            <div class="empty-icon">📋</div>
-            <p>Selecciona las fechas y haz clic en "Cargar Publicaciones" para consultar.</p>
+          <div class="publicaciones-tabla-container" id="publicacionesTabla" style="display:none;">
+            <table class="publicaciones-table">
+              <thead>
+                <tr>
+                  <th>Título / Descripción</th>
+                  <th>Fecha</th>
+                  <th>Tipo</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="publicacionesTableBody">
+              </tbody>
+            </table>
+          </div>
+          <div class="publicaciones-empty-results" id="publicacionesEmpty" style="display:none;">
+            <div class="empty-icon">📭</div>
+            <p>No se encontraron publicaciones en el rango de fechas seleccionado.</p>
           </div>
         </div>
         
@@ -5076,8 +5140,10 @@ function bindContentEvents(){
   }
   
   // ======= CONSULTAR PUBLICACIONES PROCESALES =======
-  const btnCargarPublicaciones = document.getElementById('btnCargarPublicaciones');
-  const btnAbrirPortal = document.getElementById('btnAbrirPortal');
+  const btnConsultarPublicaciones = document.getElementById('btnConsultarPublicaciones');
+  const btnAbrirPortalExterno = document.getElementById('btnAbrirPortalExterno');
+  const btnReintentarPublicaciones = document.getElementById('btnReintentarPublicaciones');
+  const btnAbrirPortalFallback = document.getElementById('btnAbrirPortalFallback');
   const pubFechaInicio = document.getElementById('pubFechaInicio');
   const pubFechaFin = document.getElementById('pubFechaFin');
   
@@ -5102,7 +5168,7 @@ function bindContentEvents(){
     '91': '178847316', '94': '178847317', '95': '178847318', '97': '178847319', '99': '178847320'
   };
   
-  // Función para construir la URL de publicaciones
+  // Función para construir la URL de publicaciones (para abrir en portal externo)
   function buildPublicacionesUrl(codigoDespacho, fechaInicio, fechaFin){
     const codigoDANE = codigoDespacho.substring(0, 5);
     const idDepto = codigoDANE.substring(0, 2);
@@ -5129,10 +5195,110 @@ function bindContentEvents(){
     return `${baseUrl}?${params.toString()}`;
   }
   
-  // Botón: Cargar Publicaciones (iframe)
-  if(btnCargarPublicaciones){
-    btnCargarPublicaciones.addEventListener('click', () => {
-      const codigoDespacho = btnCargarPublicaciones.dataset.codigo || '';
+  // Función para construir URL del proxy local
+  function buildProxyUrl(codigoDespacho, fechaInicio, fechaFin){
+    const codigoDANE = codigoDespacho.substring(0, 5);
+    const idDepto = codigoDANE.substring(0, 2);
+    const idMuni = codigoDANE;
+    const idDeptoCategory = deptoCategories[idDepto] || '';
+    
+    const params = new URLSearchParams();
+    params.set('fechaInicio', fechaInicio);
+    params.set('fechaFin', fechaFin);
+    params.set('idDepto', idDepto);
+    params.set('idMuni', idMuni);
+    params.set('idDespacho', codigoDespacho);
+    params.set('idDeptoIdCategory', idDeptoCategory);
+    
+    // Usar proxy local
+    return `/api/publicaciones?${params.toString()}`;
+  }
+  
+  // Función para mostrar/ocultar elementos de resultados
+  function showPublicacionesState(state){
+    const loading = document.getElementById('publicacionesLoading');
+    const error = document.getElementById('publicacionesError');
+    const tabla = document.getElementById('publicacionesTabla');
+    const empty = document.getElementById('publicacionesEmpty');
+    const header = document.getElementById('publicacionesHeader');
+    
+    if(loading) loading.style.display = state === 'loading' ? 'flex' : 'none';
+    if(error) error.style.display = state === 'error' ? 'block' : 'none';
+    if(tabla) tabla.style.display = state === 'results' ? 'block' : 'none';
+    if(empty) empty.style.display = state === 'empty' ? 'flex' : 'none';
+    if(header) header.style.display = (state === 'results' || state === 'empty') ? 'flex' : 'none';
+  }
+  
+  // Función para renderizar publicaciones en la tabla
+  function renderPublicacionesTable(publicaciones){
+    const tbody = document.getElementById('publicacionesTableBody');
+    const countEl = document.getElementById('publicacionesCount');
+    
+    if(!tbody) return;
+    
+    if(countEl) countEl.textContent = `${publicaciones.length} resultado${publicaciones.length !== 1 ? 's' : ''}`;
+    
+    if(publicaciones.length === 0){
+      showPublicacionesState('empty');
+      return;
+    }
+    
+    tbody.innerHTML = publicaciones.map(pub => `
+      <tr>
+        <td class="pub-titulo">${pub.titulo || '—'}</td>
+        <td class="pub-fecha">${pub.fecha || '—'}</td>
+        <td><span class="pub-tipo">${pub.tipo || 'Publicación'}</span></td>
+        <td>
+          ${pub.enlace ? `<a href="${pub.enlace}" target="_blank" class="pub-enlace">Ver documento ↗</a>` : '—'}
+        </td>
+      </tr>
+    `).join('');
+    
+    showPublicacionesState('results');
+  }
+  
+  // Función para consultar publicaciones via proxy
+  async function consultarPublicacionesProxy(codigoDespacho, fechaInicio, fechaFin){
+    showPublicacionesState('loading');
+    
+    const proxyUrl = buildProxyUrl(codigoDespacho, fechaInicio, fechaFin);
+    
+    try {
+      const response = await fetch(proxyUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      
+      if(!response.ok){
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if(data.success){
+        renderPublicacionesTable(data.publicaciones || []);
+        console.log('[Publicaciones] Recibidas:', data.total, 'publicaciones');
+        if(data.html_preview){
+          console.log('[Publicaciones] Preview HTML:', data.html_preview);
+        }
+      } else {
+        console.error('[Publicaciones] Error del servidor:', data.error);
+        showPublicacionesState('error');
+      }
+      
+    } catch(err){
+      console.error('[Publicaciones] Error de conexión:', err.message);
+      // Probablemente el proxy no está corriendo
+      showPublicacionesState('error');
+    }
+  }
+  
+  // Botón: Consultar Publicaciones (via proxy)
+  if(btnConsultarPublicaciones){
+    btnConsultarPublicaciones.addEventListener('click', () => {
+      const codigoDespacho = btnConsultarPublicaciones.dataset.codigo || '';
       const fechaInicio = pubFechaInicio ? pubFechaInicio.value : '';
       const fechaFin = pubFechaFin ? pubFechaFin.value : '';
       
@@ -5141,36 +5307,14 @@ function bindContentEvents(){
         return;
       }
       
-      const url = buildPublicacionesUrl(codigoDespacho, fechaInicio, fechaFin);
-      
-      // Mostrar loading
-      const resultados = document.getElementById('publicacionesResultados');
-      if(resultados){
-        resultados.querySelector('.publicaciones-empty').style.display = 'none';
-        resultados.querySelector('.publicaciones-loading').style.display = 'flex';
-        resultados.querySelector('.publicaciones-iframe-container').style.display = 'none';
-      }
-      
-      // Cargar iframe después de un pequeño delay
-      setTimeout(() => {
-        const iframe = document.getElementById('iframePublicaciones');
-        if(iframe){
-          iframe.src = url;
-          iframe.onload = () => {
-            if(resultados){
-              resultados.querySelector('.publicaciones-loading').style.display = 'none';
-              resultados.querySelector('.publicaciones-iframe-container').style.display = 'block';
-            }
-          };
-        }
-      }, 500);
+      consultarPublicacionesProxy(codigoDespacho, fechaInicio, fechaFin);
     });
   }
   
-  // Botón: Abrir en Portal (nueva ventana)
-  if(btnAbrirPortal){
-    btnAbrirPortal.addEventListener('click', () => {
-      const codigoDespacho = btnAbrirPortal.dataset.codigo || '';
+  // Botón: Abrir en Portal Externo
+  if(btnAbrirPortalExterno){
+    btnAbrirPortalExterno.addEventListener('click', () => {
+      const codigoDespacho = btnAbrirPortalExterno.dataset.codigo || '';
       const fechaInicio = pubFechaInicio ? pubFechaInicio.value : '';
       const fechaFin = pubFechaFin ? pubFechaFin.value : '';
       
@@ -5181,6 +5325,20 @@ function bindContentEvents(){
       
       const url = buildPublicacionesUrl(codigoDespacho, fechaInicio, fechaFin);
       window.open(url, '_blank', 'noopener,noreferrer');
+    });
+  }
+  
+  // Botón: Reintentar consulta
+  if(btnReintentarPublicaciones){
+    btnReintentarPublicaciones.addEventListener('click', () => {
+      if(btnConsultarPublicaciones) btnConsultarPublicaciones.click();
+    });
+  }
+  
+  // Botón: Abrir portal como fallback
+  if(btnAbrirPortalFallback){
+    btnAbrirPortalFallback.addEventListener('click', () => {
+      if(btnAbrirPortalExterno) btnAbrirPortalExterno.click();
     });
   }
   
