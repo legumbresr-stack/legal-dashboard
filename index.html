@@ -1036,16 +1036,31 @@ async function loadDirectorioDespachos(){
 // Buscar despacho por código (extraído del radicado)
 function buscarDespachoPorCodigo(codigo){
   if(!codigo || !directorioDespachos.length) return null;
-  // Normalizar código a 11 dígitos
-  const codigoNorm = codigo.replace(/[-\s]/g, '').substring(0, 11).padStart(11, '0');
-  return directorioDespachos.find(d => d.codigo === codigoNorm);
+  const codigoClean = codigo.replace(/[-\s]/g, '');
+  
+  // Intentar primero con 12 dígitos (formato más común)
+  let codigo12 = codigoClean.substring(0, 12);
+  let encontrado = directorioDespachos.find(d => d.codigo === codigo12);
+  if(encontrado) return encontrado;
+  
+  // Si no encuentra, intentar con 11 dígitos
+  let codigo11 = codigoClean.substring(0, 11);
+  encontrado = directorioDespachos.find(d => d.codigo === codigo11);
+  if(encontrado) return encontrado;
+  
+  // Si aún no encuentra, buscar por coincidencia parcial (primeros 10 dígitos)
+  let codigoPartial = codigoClean.substring(0, 10);
+  encontrado = directorioDespachos.find(d => d.codigo.startsWith(codigoPartial));
+  
+  return encontrado;
 }
 
 // Buscar despacho por radicado completo
 function buscarDespachoPorRadicado(radicado){
   if(!radicado) return null;
-  const codigo = extractCodigoDespacho(radicado);
-  return buscarDespachoPorCodigo(codigo);
+  // Limpiar el radicado y usar directamente los primeros dígitos
+  const radicadoClean = radicado.replace(/[-\s]/g, '');
+  return buscarDespachoPorCodigo(radicadoClean);
 }
 
 function loadData(){
