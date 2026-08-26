@@ -4227,13 +4227,14 @@ function renderDespachoDetail(){
 }
 
 // Extraer código del despacho del radicado (primeros 12 dígitos son el código del despacho)
+// Estructura: DANE(5) + Corporación(2) + Especialidad(2) + Consecutivo(3) = 12 dígitos
 function extractCodigoDespacho(radicado){
   if(!radicado) return '';
   const clean = radicado.replace(/[-\s]/g, '');
-  if(clean.length >= 11){
-    return clean.substring(0, 11);
+  if(clean.length >= 12){
+    return clean.substring(0, 12);
   }
-  return '';
+  return clean; // Retornar lo que haya si tiene menos de 12
 }
 
 // Extraer municipio del nombre del despacho
