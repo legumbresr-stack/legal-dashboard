@@ -1101,32 +1101,47 @@ async function loadDirectorioDespachos(){
 }
 
 // Buscar despacho por código (extraído del radicado)
+// Estructura del radicado: XXXXX + YY + ZZ + NNN + AAAA + CCCCC + II = 23 dígitos
+// Código del despacho = primeros 12 dígitos: DANE(5) + Corporación(2) + Especialidad(2) + Consecutivo(3)
 function buscarDespachoPorCodigo(codigo){
   if(!codigo || !directorioDespachos.length) return null;
   const codigoClean = codigo.replace(/[-\s]/g, '');
   
-  // Intentar primero con 12 dígitos (formato más común)
-  let codigo12 = codigoClean.substring(0, 12);
+  // Extraer los primeros 12 dígitos (código del despacho)
+  const codigo12 = codigoClean.substring(0, 12);
+  
+  // Buscar código exacto de 12 dígitos
   let encontrado = directorioDespachos.find(d => d.codigo === codigo12);
   if(encontrado) return encontrado;
   
-  // Si no encuentra, intentar con 11 dígitos
-  let codigo11 = codigoClean.substring(0, 11);
+  // Si el código DANE empieza con 0, en el directorio puede estar sin el cero inicial
+  // Ej: 080013110002 -> 80013110002 (11 dígitos)
+  if(codigo12.startsWith('0')){
+    const sinCeroInicial = codigo12.substring(1); // 11 dígitos
+    encontrado = directorioDespachos.find(d => d.codigo === sinCeroInicial);
+    if(encontrado) return encontrado;
+  }
+  
+  // Intentar con 11 dígitos (algunos códigos en el directorio tienen 11)
+  const codigo11 = codigoClean.substring(0, 11);
   encontrado = directorioDespachos.find(d => d.codigo === codigo11);
   if(encontrado) return encontrado;
   
-  // Si aún no encuentra, buscar por coincidencia parcial (primeros 10 dígitos)
-  let codigoPartial = codigoClean.substring(0, 10);
-  encontrado = directorioDespachos.find(d => d.codigo.startsWith(codigoPartial));
+  // Si empieza con 0, intentar sin cero con 10 dígitos
+  if(codigo11.startsWith('0')){
+    const sinCero10 = codigo11.substring(1);
+    encontrado = directorioDespachos.find(d => d.codigo === sinCero10);
+    if(encontrado) return encontrado;
+  }
   
-  return encontrado;
+  return null;
 }
 
-// Buscar despacho por radicado completo
+// Buscar despacho por radicado completo (23 dígitos)
 function buscarDespachoPorRadicado(radicado){
   if(!radicado) return null;
-  // Limpiar el radicado y usar directamente los primeros dígitos
   const radicadoClean = radicado.replace(/[-\s]/g, '');
+  // El código del despacho son los primeros 12 dígitos
   return buscarDespachoPorCodigo(radicadoClean);
 }
 
@@ -3944,49 +3959,31 @@ function renderDespachoDetail(){
   if(selectedDespachoId && directorioDespachos.length > 0){
     const codigoBase = selectedDespachoId.replace(/[-\s]/g, '');
     
-    // Intentar diferentes variaciones del código
-    despachoDirectorio = directorioDespachos.find(d => d.codigo === codigoBase);
+    // Usar la misma lógica que buscarDespachoPorCodigo
+    // Código de 12 dígitos
+    const codigo12 = codigoBase.substring(0, 12).padEnd(12, '0');
+    despachoDirectorio = directorioDespachos.find(d => d.codigo === codigo12);
     
-    // Si no encuentra, intentar agregando un 0 al final (11 dígitos -> 12 dígitos)
+    // Si empieza con 0, buscar sin el cero inicial (11 dígitos)
+    if(!despachoDirectorio && codigoBase.startsWith('0')){
+      const sinCero = codigoBase.substring(1, 12);
+      despachoDirectorio = directorioDespachos.find(d => d.codigo === sinCero);
+    }
+    
+    // Intentar con el código tal cual (puede ser de 11 dígitos)
+    if(!despachoDirectorio){
+      despachoDirectorio = directorioDespachos.find(d => d.codigo === codigoBase);
+    }
+    
+    // Si el código base tiene 11 dígitos y empieza con 0, quitar el cero
+    if(!despachoDirectorio && codigoBase.length === 11 && codigoBase.startsWith('0')){
+      const sinCero10 = codigoBase.substring(1);
+      despachoDirectorio = directorioDespachos.find(d => d.codigo === sinCero10);
+    }
+    
+    // Búsqueda con código + 0 al final (para códigos de 11 -> 12 dígitos)
     if(!despachoDirectorio && codigoBase.length === 11){
       despachoDirectorio = directorioDespachos.find(d => d.codigo === codigoBase + '0');
-    }
-    
-    // Si empieza con 0, intentar sin el cero inicial (08001... -> 8001...)
-    if(!despachoDirectorio && codigoBase.startsWith('0')){
-      const sinCero = codigoBase.substring(1);
-      despachoDirectorio = directorioDespachos.find(d => d.codigo === sinCero);
-      
-      // También intentar sin cero + agregar dígito al final
-      if(!despachoDirectorio){
-        despachoDirectorio = directorioDespachos.find(d => d.codigo === sinCero + '0');
-        if(!despachoDirectorio){
-          despachoDirectorio = directorioDespachos.find(d => d.codigo === sinCero + '1');
-          if(!despachoDirectorio){
-            despachoDirectorio = directorioDespachos.find(d => d.codigo === sinCero + '2');
-          }
-        }
-      }
-      
-      // Búsqueda parcial sin el cero inicial
-      if(!despachoDirectorio){
-        despachoDirectorio = directorioDespachos.find(d => d.codigo.startsWith(sinCero.substring(0, 9)));
-      }
-    }
-    
-    // Si no encuentra, intentar con los primeros 12 dígitos
-    if(!despachoDirectorio && codigoBase.length >= 12){
-      despachoDirectorio = directorioDespachos.find(d => d.codigo === codigoBase.substring(0, 12));
-    }
-    
-    // Búsqueda parcial: primeros 10 dígitos
-    if(!despachoDirectorio){
-      despachoDirectorio = directorioDespachos.find(d => d.codigo.startsWith(codigoBase.substring(0, 10)));
-    }
-    
-    // Búsqueda parcial más amplia: primeros 8 dígitos
-    if(!despachoDirectorio){
-      despachoDirectorio = directorioDespachos.find(d => d.codigo.startsWith(codigoBase.substring(0, 8)));
     }
     
     console.log('Búsqueda despacho:', codigoBase, '-> Encontrado:', despachoDirectorio ? despachoDirectorio.nombre : 'NO');
