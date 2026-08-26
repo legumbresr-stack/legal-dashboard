@@ -1,4 +1,4 @@
-<!-- Build: 1787661093 -->
+<!-- Build: 1787661094 -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -1716,6 +1716,49 @@ async function syncProcess(proceso){
             });
             
             console.log('Actuaciones cargadas:', proceso.actuaciones.length);
+            
+            // Cargar documentos de actuaciones que los tengan
+            const actuacionesConDocs = proceso.actuaciones.filter(act => act.conDocumentos === true && act.idRegActuacion);
+            if(actuacionesConDocs.length > 0){
+              console.log('Cargando documentos de', actuacionesConDocs.length, 'actuaciones...');
+              let todosDocumentos = [];
+              
+              for(const act of actuacionesConDocs){
+                try {
+                  const docUrl = `https://consultaprocesos.ramajudicial.gov.co:448/api/v2/Proceso/DocumentosActuacion/${act.idRegActuacion}`;
+                  const docResponse = await fetchWithCorsProxy(docUrl);
+                  
+                  if(docResponse.ok){
+                    const docs = await docResponse.json();
+                    if(Array.isArray(docs) && docs.length > 0){
+                      docs.forEach(doc => {
+                        todosDocumentos.push({
+                          ...doc,
+                          fechaActuacion: act.fecha,
+                          actuacion: act.actuacion
+                        });
+                      });
+                    }
+                  }
+                } catch(docErr){
+                  console.log('Error cargando documentos de actuación:', act.idRegActuacion, docErr);
+                }
+              }
+              
+              proceso.documentos = todosDocumentos;
+              console.log('Documentos cargados:', todosDocumentos.length);
+              
+              // Record documentos sync
+              proceso.syncHistory.unshift({
+                inicio: new Date().toISOString(),
+                origen: 'Consulta Nacional Unific',
+                operacion: 'Documentos',
+                resultado: 'exito',
+                duracion: '—',
+                elementos: todosDocumentos.length,
+                error: null
+              });
+            }
           } else {
             proceso.syncHistory.unshift({
               inicio: syncStartTime,
