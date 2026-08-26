@@ -1001,6 +1001,11 @@
   .filtro-value{font-size:13px;color:#1e293b;font-weight:500;background:#fff;padding:4px 10px;border-radius:4px;border:1px solid #e2e8f0;}
   .publicaciones-actions{display:flex;gap:12px;}
   .publicaciones-actions .btn{display:flex;align-items:center;gap:8px;}
+  .publicaciones-fechas{display:flex;gap:16px;margin-bottom:16px;}
+  .publicaciones-fechas .fecha-grupo{display:flex;align-items:center;gap:8px;}
+  .publicaciones-fechas label{font-size:13px;font-weight:500;color:#475569;}
+  .publicaciones-fechas .fecha-input{padding:8px 12px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;color:#1e293b;}
+  .publicaciones-fechas .fecha-input:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.1);}
   .publicaciones-divider{display:flex;align-items:center;gap:16px;margin:24px 0 20px;color:var(--text-muted);font-size:13px;font-weight:500;}
   .publicaciones-divider::before,.publicaciones-divider::after{content:'';flex:1;height:1px;background:var(--border);}
   .publicaciones-instrucciones{margin-top:16px;background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:0;}
@@ -4183,6 +4188,16 @@ function renderDespachoDetail(){
               <span class="filtro-value">${codigoConCero}</span>
             </div>
           </div>
+          <div class="publicaciones-fechas">
+            <div class="fecha-grupo">
+              <label for="pubFechaInicio">Desde:</label>
+              <input type="date" id="pubFechaInicio" class="fecha-input">
+            </div>
+            <div class="fecha-grupo">
+              <label for="pubFechaFin">Hasta:</label>
+              <input type="date" id="pubFechaFin" class="fecha-input">
+            </div>
+          </div>
           <div class="publicaciones-actions">
             <button class="btn btn-primary" id="btnConsultarPublicaciones" data-codigo="${codigoConCero}" data-depto="${departamento}" data-muni="${municipio}">
               🌐 Consultar en Portal Oficial
@@ -5033,40 +5048,99 @@ function bindContentEvents(){
   
   // ======= CONSULTAR PUBLICACIONES PROCESALES =======
   const btnConsultarPublicaciones = document.getElementById('btnConsultarPublicaciones');
+  const pubFechaInicio = document.getElementById('pubFechaInicio');
+  const pubFechaFin = document.getElementById('pubFechaFin');
+  
+  // Establecer fechas por defecto (últimos 7 días)
+  if(pubFechaInicio && pubFechaFin){
+    const hoy = new Date();
+    const hace7dias = new Date(hoy);
+    hace7dias.setDate(hace7dias.getDate() - 7);
+    pubFechaInicio.value = hace7dias.toISOString().split('T')[0];
+    pubFechaFin.value = hoy.toISOString().split('T')[0];
+  }
+  
   if(btnConsultarPublicaciones){
     btnConsultarPublicaciones.addEventListener('click', () => {
       const codigoDespacho = btnConsultarPublicaciones.dataset.codigo || '';
-      // Abrir página de publicaciones procesales de la Rama Judicial
-      // La página filtra por el código del despacho
-      const baseUrl = 'https://publicacionesprocesales.ramajudicial.gov.co/';
-      // Crear una nueva ventana con la URL base - el usuario selecciona los filtros manualmente
-      // ya que la API no permite precargar filtros directamente en la URL
-      window.open(baseUrl, '_blank', 'noopener,noreferrer');
       
-      // Mostrar instrucciones al usuario
-      const instrucciones = document.createElement('div');
-      instrucciones.className = 'publicaciones-instrucciones';
-      instrucciones.innerHTML = `
-        <div class="instrucciones-content">
-          <div class="instrucciones-icon">ℹ️</div>
-          <div class="instrucciones-text">
-            <strong>Instrucciones:</strong> En la página abierta, selecciona los filtros:
-            <ul>
-              <li>Departamento: <strong>${btnConsultarPublicaciones.dataset.depto || ''}</strong></li>
-              <li>Municipio: <strong>${btnConsultarPublicaciones.dataset.muni || ''}</strong></li>
-              <li>Despacho: Busca el código <strong>${codigoDespacho}</strong></li>
-            </ul>
-          </div>
-          <button class="btn-close-instrucciones" onclick="this.parentElement.parentElement.remove()">✕</button>
-        </div>
-      `;
+      // Extraer códigos DANE del código de despacho
+      // Código despacho: DANE(5) + Corporación(2) + Especialidad(2) + Consecutivo(3) = 12 dígitos
+      // Ejemplo: 080013110006 -> idDepto=08, idMuni=08001
+      const codigoDANE = codigoDespacho.substring(0, 5); // 08001
+      const idDepto = codigoDANE.substring(0, 2); // 08
+      const idMuni = codigoDANE; // 08001
       
-      const panel = document.querySelector('.publicaciones-oficial-panel');
-      if(panel){
-        const existing = panel.querySelector('.publicaciones-instrucciones');
-        if(existing) existing.remove();
-        panel.appendChild(instrucciones);
+      // Obtener fechas de los inputs
+      const fechaInicio = pubFechaInicio ? pubFechaInicio.value : '';
+      const fechaFin = pubFechaFin ? pubFechaFin.value : '';
+      
+      if(!fechaInicio || !fechaFin){
+        alert('Por favor selecciona las fechas de inicio y fin');
+        return;
       }
+      
+      // Mapeo de códigos de departamento a IDs de categoría (necesarios para la API)
+      const deptoCategories = {
+        '05': '178847277', // Antioquia
+        '08': '178847290', // Atlántico
+        '11': '178847284', // Bogotá
+        '13': '178847291', // Bolívar
+        '15': '178847292', // Boyacá
+        '17': '178847293', // Caldas
+        '18': '178847294', // Caquetá
+        '19': '178847295', // Cauca
+        '20': '178847296', // Cesar
+        '23': '178847297', // Córdoba
+        '25': '178847298', // Cundinamarca
+        '27': '178847299', // Chocó
+        '41': '178847300', // Huila
+        '44': '178847301', // La Guajira
+        '47': '178847302', // Magdalena
+        '50': '178847303', // Meta
+        '52': '178847304', // Nariño
+        '54': '178847305', // Norte de Santander
+        '63': '178847306', // Quindío
+        '66': '178847307', // Risaralda
+        '68': '178847308', // Santander
+        '70': '178847309', // Sucre
+        '73': '178847310', // Tolima
+        '76': '178847311', // Valle del Cauca
+        '81': '178847312', // Arauca
+        '85': '178847313', // Casanare
+        '86': '178847314', // Putumayo
+        '88': '178847315', // San Andrés
+        '91': '178847316', // Amazonas
+        '94': '178847317', // Guainía
+        '95': '178847318', // Guaviare
+        '97': '178847319', // Vaupés
+        '99': '178847320'  // Vichada
+      };
+      
+      const idDeptoCategory = deptoCategories[idDepto] || '';
+      
+      // Construir URL con parámetros
+      const portletId = 'co_com_avanti_efectosProcesales_PublicacionesEfectosProcesalesPortletV2_INSTANCE_BIyXQFHVaYaq';
+      const baseUrl = 'https://publicacionesprocesales.ramajudicial.gov.co/web/publicaciones-procesales/inicio';
+      
+      const params = new URLSearchParams();
+      params.set('p_p_id', portletId);
+      params.set('p_p_lifecycle', '0');
+      params.set('p_p_state', 'normal');
+      params.set('p_p_mode', 'view');
+      params.set(`_${portletId}_action`, 'busqueda');
+      params.set(`_${portletId}_fechaInicio`, fechaInicio);
+      params.set(`_${portletId}_fechaFin`, fechaFin);
+      params.set(`_${portletId}_idDepto`, idDepto);
+      params.set(`_${portletId}_idMuni`, idMuni);
+      params.set(`_${portletId}_idDespacho`, codigoDespacho);
+      params.set(`_${portletId}_verTotales`, 'true');
+      if(idDeptoCategory){
+        params.set(`_${portletId}_idDeptoIdCategory`, idDeptoCategory);
+      }
+      
+      const fullUrl = `${baseUrl}?${params.toString()}`;
+      window.open(fullUrl, '_blank', 'noopener,noreferrer');
     });
   }
   
