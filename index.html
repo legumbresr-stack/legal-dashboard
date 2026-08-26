@@ -4584,6 +4584,18 @@ document.querySelectorAll('.nav-item').forEach(btn=>{
       render();
       return;
     }
+    
+    // Si hace clic en Despachos, limpiar el despacho seleccionado para volver a la lista
+    if(btn.dataset.view === 'despachos'){
+      selectedDespachoId = null;
+      selectedDespachoTab = 'informacion';
+    }
+    
+    // Si hace clic en Procesos, limpiar el proceso seleccionado para volver a la lista
+    if(btn.dataset.view === 'procesos'){
+      selectedProcessId = null;
+    }
+    
     currentView = btn.dataset.view; 
     render(); 
   });
