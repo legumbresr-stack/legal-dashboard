@@ -1,4 +1,4 @@
-<!-- Build: 1787661085 -->
+<!-- Build: 1787661086 -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -708,6 +708,71 @@
   .estado-color.audiencia{background:#ec4899;}
   .estado-color.pendiente{background:#eab308;}
   .estado-color.ninguno{background:#fff;border:1px dashed #ccc;}
+
+  /* ========== CLIENTES PAGE STYLES ========== */
+  .clientes-page{display:flex;flex-direction:column;height:100%;min-height:calc(100vh - 40px);}
+  
+  .clientes-header{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--border);}
+  .clientes-header-left{display:flex;align-items:center;gap:12px;}
+  .clientes-icon{font-size:20px;}
+  .clientes-title{font-size:18px;font-weight:600;margin:0;}
+  
+  .clientes-toolbar{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;border-bottom:1px solid var(--border);background:#fafafa;}
+  .clientes-toolbar-left{display:flex;align-items:center;gap:16px;}
+  .clientes-toolbar-right{display:flex;align-items:center;gap:12px;}
+  
+  .toolbar-btn{display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:#fff;font-size:13px;cursor:pointer;color:var(--text);transition:background 0.15s;}
+  .toolbar-btn:hover{background:#f0f0f1;}
+  
+  .clientes-search-box{display:flex;align-items:center;gap:8px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:#fff;min-width:220px;}
+  .clientes-search-box .search-icon{color:var(--text-muted);font-size:14px;}
+  .clientes-search-box input{border:none;outline:none;font-size:13px;width:100%;background:transparent;}
+  .clientes-search-box input::placeholder{color:var(--text-muted);}
+  
+  .clientes-count{font-size:13px;color:var(--text-muted);}
+  
+  .clientes-filter-tabs{display:flex;align-items:center;background:#fff;border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+  .clientes-filter-tabs .filter-tab{padding:6px 14px;border:none;background:transparent;font-size:13px;cursor:pointer;color:var(--text-muted);transition:all 0.15s;}
+  .clientes-filter-tabs .filter-tab:not(:last-child){border-right:1px solid var(--border);}
+  .clientes-filter-tabs .filter-tab:hover{background:#f5f5f5;color:var(--text);}
+  .clientes-filter-tabs .filter-tab.active{background:var(--accent-soft);color:var(--accent);font-weight:500;}
+  
+  .clientes-content{display:flex;flex:1;overflow:hidden;}
+  
+  .clientes-sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:16px;background:#fafafa;display:flex;flex-direction:column;gap:8px;}
+  .vista-btn{display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px dashed var(--border);border-radius:6px;background:transparent;font-size:13px;cursor:pointer;color:var(--text-muted);transition:all 0.15s;}
+  .vista-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft);}
+  .vista-search{display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;margin:8px 0;}
+  .vista-search .search-icon{color:var(--text-muted);font-size:12px;}
+  .vista-search input{border:none;outline:none;font-size:12px;width:100%;background:transparent;}
+  .vista-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:6px;font-size:13px;cursor:pointer;color:var(--text);transition:background 0.15s;}
+  .vista-item:hover{background:#f0f0f1;}
+  .vista-item.active{background:var(--accent-soft);color:var(--accent);font-weight:500;}
+  .vista-icon{font-size:14px;}
+  
+  .clientes-table-area{flex:1;overflow:auto;padding:0;}
+  
+  .clientes-table{width:100%;border-collapse:collapse;}
+  .clientes-table thead{background:#fafafa;position:sticky;top:0;z-index:5;}
+  .clientes-table th{padding:12px 16px;text-align:left;font-size:12px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.03em;border-bottom:1px solid var(--border);}
+  .clientes-table td{padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle;}
+  .clientes-table tbody tr:hover{background:#f8fafc;}
+  
+  .cliente-nombre-cell{display:flex;align-items:center;gap:10px;}
+  .cliente-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;flex-shrink:0;}
+  
+  .cliente-tipo-badge{display:inline-block;padding:4px 10px;border-radius:4px;font-size:11px;font-weight:500;}
+  .cliente-tipo-badge.persona{background:#e0f2fe;color:#0369a1;}
+  .cliente-tipo-badge.empresa{background:#fce7f3;color:#be185d;}
+  
+  .procesos-count{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:24px;padding:0 8px;border-radius:12px;background:#f1f5f9;font-size:12px;font-weight:500;color:var(--text);}
+  
+  .fecha-cell{color:var(--text-muted);font-size:12px;}
+  
+  .clientes-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;text-align:center;}
+  .clientes-empty .empty-icon{font-size:48px;margin-bottom:16px;opacity:0.5;}
+  .clientes-empty h3{font-size:16px;font-weight:600;margin:0 0 8px;color:var(--text);}
+  .clientes-empty p{font-size:13px;color:var(--text-muted);margin:0 0 20px;line-height:1.5;}
 </style>
 </head>
 <body>
@@ -2752,13 +2817,128 @@ function renderSincronizacionTab(proceso){
   `;
 }
 
+// Variables para filtros de clientes
+let clienteSearchTerm = '';
+let clienteFilterType = 'todos'; // todos, personas, empresas
+let clienteCurrentView = 'default';
+
 function renderClientes(){
+  // Filtrar clientes según búsqueda y tipo
+  let filteredClientes = clientes.filter(c => {
+    const matchSearch = !clienteSearchTerm || 
+      (c.nombre && c.nombre.toLowerCase().includes(clienteSearchTerm.toLowerCase())) ||
+      (c.documento && c.documento.toLowerCase().includes(clienteSearchTerm.toLowerCase())) ||
+      (c.correo && c.correo.toLowerCase().includes(clienteSearchTerm.toLowerCase()));
+    
+    const matchType = clienteFilterType === 'todos' || 
+      (clienteFilterType === 'personas' && c.tipo === 'persona') ||
+      (clienteFilterType === 'empresas' && c.tipo === 'empresa');
+    
+    return matchSearch && matchType;
+  });
+
+  const clientesCount = filteredClientes.length;
+  
   return `
-    <h1 class="page-title">Clientes</h1>
-    <p class="page-sub">Personas o empresas asociadas a tus procesos</p>
-    <div class="btn-row"><button class="btn btn-primary" id="btnNuevoCliente">+ Nuevo cliente</button></div>
-    <div class="panel" style="padding:0;overflow:hidden;">
-      ${ clientes.length ? '<table><thead><tr><th>Nombre</th><th>Teléfono</th><th>Correo</th><th># Procesos</th><th></th></tr></thead><tbody>'+clientes.map(c=>'<tr><td>'+c.nombre+'</td><td>'+(c.telefono||'—')+'</td><td>'+(c.correo||'—')+'</td><td>'+procesos.filter(p=>p.clienteId===c.id).length+'</td><td><div class="row-actions"><button class="icon-btn" data-editc="'+c.id+'">Editar</button><button class="icon-btn danger" data-delc="'+c.id+'">Eliminar</button></div></td></tr>').join('')+'</tbody></table>' : '<div class="empty-state" style="padding:32px">Aún no tienes clientes registrados.</div>' }
+    <div class="clientes-page">
+      <!-- Header -->
+      <div class="clientes-header">
+        <div class="clientes-header-left">
+          <div class="clientes-icon">👥</div>
+          <h1 class="clientes-title">Clientes</h1>
+        </div>
+        <button class="btn btn-primary" id="btnNuevoCliente">+ Nuevo cliente</button>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="clientes-toolbar">
+        <div class="clientes-toolbar-left">
+          <button class="toolbar-btn" id="btnClientesMenu">☰</button>
+          <div class="clientes-search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="clienteSearchInput" placeholder="Buscar cliente por nombre..." value="${clienteSearchTerm}">
+          </div>
+          <span class="clientes-count">${clientesCount} cliente${clientesCount !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="clientes-toolbar-right">
+          <div class="clientes-filter-tabs">
+            <button class="filter-tab ${clienteFilterType === 'todos' ? 'active' : ''}" data-clientfilter="todos">Todos</button>
+            <button class="filter-tab ${clienteFilterType === 'personas' ? 'active' : ''}" data-clientfilter="personas">Personas</button>
+            <button class="filter-tab ${clienteFilterType === 'empresas' ? 'active' : ''}" data-clientfilter="empresas">Empresas</button>
+          </div>
+          <button class="toolbar-btn" id="btnClientesOrden">↕ Orden</button>
+          <button class="toolbar-btn" id="btnClientesColumnas">⊞ Columnas</button>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <div class="clientes-content">
+        <!-- Sidebar Vistas -->
+        <div class="clientes-sidebar">
+          <button class="vista-btn" id="btnNuevaVista">+ Nueva vista</button>
+          <div class="vista-search">
+            <span class="search-icon">🔍</span>
+            <input type="text" placeholder="Buscar vistas" disabled>
+          </div>
+          <div class="vista-item ${clienteCurrentView === 'default' ? 'active' : ''}" data-vista="default">
+            <span class="vista-icon">📋</span>
+            Vista predeterminada
+          </div>
+        </div>
+
+        <!-- Table Area -->
+        <div class="clientes-table-area">
+          ${filteredClientes.length > 0 ? `
+            <table class="clientes-table">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Tipo</th>
+                  <th>Documento</th>
+                  <th>Email</th>
+                  <th>Teléfono</th>
+                  <th>Procesos</th>
+                  <th>Creado</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filteredClientes.map(c => {
+                  const procesosCount = procesos.filter(p => p.clienteId === c.id).length;
+                  const createdDate = c.createdAt ? new Date(c.createdAt).toLocaleDateString('es-CO', {day:'2-digit', month:'short', year:'numeric'}) : '—';
+                  return `
+                    <tr>
+                      <td class="cliente-nombre-cell">
+                        <div class="cliente-avatar">${(c.nombre || '?').charAt(0).toUpperCase()}</div>
+                        <span>${c.nombre || '—'}</span>
+                      </td>
+                      <td><span class="cliente-tipo-badge ${c.tipo || 'persona'}">${c.tipo === 'empresa' ? 'Empresa' : 'Persona'}</span></td>
+                      <td>${c.documento || '—'}</td>
+                      <td>${c.correo || '—'}</td>
+                      <td>${c.telefono || '—'}</td>
+                      <td><span class="procesos-count">${procesosCount}</span></td>
+                      <td class="fecha-cell">${createdDate}</td>
+                      <td>
+                        <div class="row-actions">
+                          <button class="icon-btn" data-editc="${c.id}" title="Editar">✏️</button>
+                          <button class="icon-btn danger" data-delc="${c.id}" title="Eliminar">🗑️</button>
+                        </div>
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          ` : `
+            <div class="clientes-empty">
+              <div class="empty-icon">👥</div>
+              <h3>Aún no hay clientes</h3>
+              <p>Crea el primer cliente para empezar<br>a vincularlo a tus procesos.</p>
+              <button class="btn btn-primary" id="btnNuevoClienteEmpty">+ Nuevo cliente</button>
+            </div>
+          `}
+        </div>
+      </div>
     </div>
   `;
 }
@@ -3340,6 +3520,28 @@ function bindContentEvents(){
 
   const bNewC = document.getElementById('btnNuevoCliente');
   if(bNewC) bNewC.addEventListener('click', ()=> openClienteModal());
+  
+  // Botón nuevo cliente en estado vacío
+  const bNewCEmpty = document.getElementById('btnNuevoClienteEmpty');
+  if(bNewCEmpty) bNewCEmpty.addEventListener('click', ()=> openClienteModal());
+  
+  // Búsqueda de clientes
+  const clienteSearchInput = document.getElementById('clienteSearchInput');
+  if(clienteSearchInput){
+    clienteSearchInput.addEventListener('input', (e) => {
+      clienteSearchTerm = e.target.value;
+      render();
+    });
+  }
+  
+  // Filtros de tipo de cliente (Todos, Personas, Empresas)
+  document.querySelectorAll('[data-clientfilter]').forEach(tab => {
+    tab.addEventListener('click', () => {
+      clienteFilterType = tab.dataset.clientfilter;
+      render();
+    });
+  });
+  
   document.querySelectorAll('[data-editc]').forEach(b=> b.addEventListener('click', ()=> openClienteModal(b.dataset.editc)));
   document.querySelectorAll('[data-delc]').forEach(b=> b.addEventListener('click', ()=>{
     if(confirm('¿Eliminar este cliente?')){
@@ -4759,21 +4961,53 @@ function openClienteModal(id){
   modalType = 'cliente';
   const c = id ? clientes.find(x=>x.id===id) : {};
   document.getElementById('modalTitle').textContent = id ? 'Editar cliente' : 'Nuevo cliente';
-  document.getElementById('modalBody').innerHTML = '<div class="field"><label>Nombre</label><input id="c_nombre" value="'+(c.nombre||'')+'" placeholder="Nombre completo o empresa"></div><div class="field"><label>Teléfono</label><input id="c_telefono" value="'+(c.telefono||'')+'"></div><div class="field"><label>Correo</label><input id="c_correo" value="'+(c.correo||'')+'"></div><div class="field"><label>Notas</label><textarea id="c_notas">'+(c.notas||'')+'</textarea></div>';
+  document.getElementById('modalBody').innerHTML = `
+    <div class="field">
+      <label>Nombre</label>
+      <input id="c_nombre" value="${c.nombre||''}" placeholder="Nombre completo o razón social">
+    </div>
+    <div class="field">
+      <label>Tipo</label>
+      <select id="c_tipo">
+        <option value="persona" ${(c.tipo||'persona')==='persona'?'selected':''}>Persona natural</option>
+        <option value="empresa" ${c.tipo==='empresa'?'selected':''}>Empresa</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Documento (CC/NIT)</label>
+      <input id="c_documento" value="${c.documento||''}" placeholder="Número de identificación">
+    </div>
+    <div class="field">
+      <label>Email</label>
+      <input id="c_correo" type="email" value="${c.correo||''}" placeholder="correo@ejemplo.com">
+    </div>
+    <div class="field">
+      <label>Teléfono</label>
+      <input id="c_telefono" value="${c.telefono||''}" placeholder="300 123 4567">
+    </div>
+    <div class="field">
+      <label>Notas</label>
+      <textarea id="c_notas" placeholder="Notas adicionales...">${c.notas||''}</textarea>
+    </div>
+  `;
   document.getElementById('overlay').classList.add('open');
 }
 
 function saveClienteModal(){
   const nombre = document.getElementById('c_nombre').value.trim();
   if(!nombre){ alert('Ponle un nombre al cliente.'); return; }
+  const existingClient = editingId ? clientes.find(c=>c.id===editingId) : null;
   const data = {
     id: editingId || uid(),
     nombre,
+    tipo: document.getElementById('c_tipo').value,
+    documento: document.getElementById('c_documento').value.trim(),
     telefono: document.getElementById('c_telefono').value.trim(),
     correo: document.getElementById('c_correo').value.trim(),
     notas: document.getElementById('c_notas').value.trim(),
+    createdAt: existingClient?.createdAt || new Date().toISOString()
   };
-  if(editingId){ clientes = clientes.map(c=> c.id===editingId ? data : c); }
+  if(editingId){ clientes = clientes.map(c=> c.id===editingId ? {...c, ...data} : c); }
   else { clientes.push(data); }
   saveClientes();
   closeModal();
