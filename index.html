@@ -892,6 +892,44 @@
   .despachos-empty .empty-icon{font-size:48px;margin-bottom:16px;opacity:0.5;}
   .despachos-empty h3{font-size:16px;font-weight:600;margin:0 0 8px;color:var(--text);}
   .despachos-empty p{font-size:13px;color:var(--text-muted);margin:0 0 20px;line-height:1.5;}
+
+  /* ========== BUSCAR DESPACHO POR RADICADO ========== */
+  .despacho-lookup-section{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;}
+  .despacho-lookup-title{font-size:15px;font-weight:600;color:var(--text);margin:0 0 4px;display:flex;align-items:center;gap:8px;}
+  .despacho-lookup-sub{font-size:13px;color:var(--text-muted);margin:0 0 16px;}
+  .despacho-lookup-form{display:flex;gap:12px;align-items:flex-start;}
+  .despacho-lookup-input{flex:1;padding:12px 16px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:'Courier New', monospace;letter-spacing:0.5px;}
+  .despacho-lookup-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,0.1);}
+  .despacho-lookup-input::placeholder{color:#9ca3af;font-family:inherit;letter-spacing:normal;}
+  .despacho-lookup-btn{padding:12px 20px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap;}
+  .despacho-lookup-btn:hover{background:#1d4ed8;}
+  .despacho-lookup-btn:disabled{background:#9ca3af;cursor:not-allowed;}
+  
+  .despacho-result{margin-top:20px;display:none;}
+  .despacho-result.visible{display:block;}
+  .despacho-result-card{background:#f8fafc;border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+  .despacho-result-header{background:linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);color:#fff;padding:20px;display:flex;align-items:flex-start;justify-content:space-between;}
+  .despacho-result-header-left h3{margin:0 0 4px;font-size:16px;font-weight:600;}
+  .despacho-result-header-left .codigo{font-size:13px;opacity:0.85;font-family:'Courier New', monospace;}
+  .despacho-result-badge{background:rgba(255,255,255,0.2);padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500;}
+  .despacho-result-body{padding:20px;}
+  .despacho-result-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .despacho-result-item{display:flex;flex-direction:column;gap:4px;}
+  .despacho-result-item.full-width{grid-column:1/-1;}
+  .despacho-result-label{font-size:12px;color:var(--text-muted);font-weight:500;text-transform:uppercase;letter-spacing:0.03em;}
+  .despacho-result-value{font-size:14px;color:var(--text);display:flex;align-items:center;gap:8px;}
+  .despacho-result-value a{color:var(--accent);text-decoration:none;}
+  .despacho-result-value a:hover{text-decoration:underline;}
+  .despacho-result-actions{display:flex;gap:12px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border);}
+  .despacho-result-btn{padding:10px 16px;border:1px solid var(--border);border-radius:8px;background:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;color:var(--text);font-weight:500;}
+  .despacho-result-btn:hover{background:#f5f5f5;}
+  .despacho-result-btn.primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .despacho-result-btn.primary:hover{background:#1d4ed8;}
+  
+  .despacho-not-found{margin-top:20px;padding:20px;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;display:none;}
+  .despacho-not-found.visible{display:block;}
+  .despacho-not-found-title{font-size:14px;font-weight:600;color:#dc2626;margin:0 0 8px;display:flex;align-items:center;gap:8px;}
+  .despacho-not-found-text{font-size:13px;color:#991b1b;margin:0;line-height:1.5;}
 </style>
 </head>
 <body>
@@ -964,6 +1002,7 @@ const STORE_KEY_EVENTOS = 'eventos';
 let procesos = [];
 let clientes = [];
 let eventos = [];
+let directorioDespachos = []; // Directorio judicial completo
 let editingId = null;
 let modalType = null;
 let currentView = 'procesos';
@@ -980,10 +1019,43 @@ const TIPOS = ['Judicial','Declaración de renta','Asesoría','Otro'];
 
 function uid(){ return 'id_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
 
+// Cargar directorio de despachos desde JSON
+async function loadDirectorioDespachos(){
+  try {
+    const response = await fetch('directorio-despachos.json');
+    if(response.ok){
+      directorioDespachos = await response.json();
+      console.log(`✅ Directorio de despachos cargado: ${directorioDespachos.length} despachos`);
+    }
+  } catch(e){
+    console.warn('⚠️ No se pudo cargar el directorio de despachos:', e);
+    directorioDespachos = [];
+  }
+}
+
+// Buscar despacho por código (extraído del radicado)
+function buscarDespachoPorCodigo(codigo){
+  if(!codigo || !directorioDespachos.length) return null;
+  // Normalizar código a 11 dígitos
+  const codigoNorm = codigo.replace(/[-\s]/g, '').substring(0, 11).padStart(11, '0');
+  return directorioDespachos.find(d => d.codigo === codigoNorm);
+}
+
+// Buscar despacho por radicado completo
+function buscarDespachoPorRadicado(radicado){
+  if(!radicado) return null;
+  const codigo = extractCodigoDespacho(radicado);
+  return buscarDespachoPorCodigo(codigo);
+}
+
 function loadData(){
   try{ procesos = JSON.parse(localStorage.getItem(STORE_KEY_PROCESOS)) || []; }catch(e){ procesos = []; }
   try{ clientes = JSON.parse(localStorage.getItem(STORE_KEY_CLIENTES)) || []; }catch(e){ clientes = []; }
   try{ eventos = JSON.parse(localStorage.getItem(STORE_KEY_EVENTOS)) || []; }catch(e){ eventos = []; }
+  
+  // Cargar directorio de despachos
+  loadDirectorioDespachos();
+  
   render();
   
   // Start auto-sync every 5 minutes
@@ -3574,6 +3646,73 @@ function renderDespachos(){
         </div>
       </div>
 
+      <!-- Buscar Despacho por Radicado Section -->
+      <div style="padding:20px 24px 0;">
+        <div class="despacho-lookup-section">
+          <h3 class="despacho-lookup-title">🔎 Buscar Despacho por Radicado</h3>
+          <p class="despacho-lookup-sub">Ingresa un número de radicado para identificar automáticamente el despacho judicial y ver su información de contacto.</p>
+          <div class="despacho-lookup-form">
+            <input type="text" id="radicadoLookupInput" class="despacho-lookup-input" placeholder="Ej: 11001310300120230012300" maxlength="30">
+            <button id="btnBuscarDespacho" class="despacho-lookup-btn">🔍 Buscar Despacho</button>
+          </div>
+          
+          <!-- Resultado de búsqueda -->
+          <div id="despachoResultContainer" class="despacho-result">
+            <div class="despacho-result-card">
+              <div class="despacho-result-header">
+                <div class="despacho-result-header-left">
+                  <h3 id="despachoResultNombre">—</h3>
+                  <div class="codigo" id="despachoResultCodigo">—</div>
+                </div>
+                <span class="despacho-result-badge" id="despachoResultJurisdiccion">—</span>
+              </div>
+              <div class="despacho-result-body">
+                <div class="despacho-result-grid">
+                  <div class="despacho-result-item">
+                    <span class="despacho-result-label">👨‍⚖️ Juez / Magistrado</span>
+                    <span class="despacho-result-value" id="despachoResultJuez">—</span>
+                  </div>
+                  <div class="despacho-result-item">
+                    <span class="despacho-result-label">📞 Teléfono</span>
+                    <span class="despacho-result-value" id="despachoResultTelefono">—</span>
+                  </div>
+                  <div class="despacho-result-item full-width">
+                    <span class="despacho-result-label">📍 Dirección</span>
+                    <span class="despacho-result-value" id="despachoResultDireccion">—</span>
+                  </div>
+                  <div class="despacho-result-item">
+                    <span class="despacho-result-label">🏙️ Municipio</span>
+                    <span class="despacho-result-value" id="despachoResultMunicipio">—</span>
+                  </div>
+                  <div class="despacho-result-item">
+                    <span class="despacho-result-label">🗺️ Departamento</span>
+                    <span class="despacho-result-value" id="despachoResultDepartamento">—</span>
+                  </div>
+                  <div class="despacho-result-item">
+                    <span class="despacho-result-label">⚖️ Distrito</span>
+                    <span class="despacho-result-value" id="despachoResultDistrito">—</span>
+                  </div>
+                  <div class="despacho-result-item">
+                    <span class="despacho-result-label">🔄 Circuito</span>
+                    <span class="despacho-result-value" id="despachoResultCircuito">—</span>
+                  </div>
+                </div>
+                <div class="despacho-result-actions">
+                  <button class="despacho-result-btn" id="btnCopiarDespacho">📋 Copiar información</button>
+                  <button class="despacho-result-btn" id="btnLimpiarBusqueda">✕ Limpiar</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- No encontrado -->
+          <div id="despachoNotFoundContainer" class="despacho-not-found">
+            <div class="despacho-not-found-title">⚠️ Despacho no encontrado</div>
+            <p class="despacho-not-found-text">No se encontró un despacho con el código extraído del radicado ingresado. Verifica que el número de radicado sea correcto (debe tener al menos 11 dígitos).</p>
+          </div>
+        </div>
+      </div>
+
       <!-- Toolbar -->
       <div class="despachos-toolbar">
         <div class="despachos-toolbar-left">
@@ -4329,6 +4468,92 @@ function bindContentEvents(){
       render();
     });
   });
+  
+  // ======= BÚSQUEDA DE DESPACHO POR RADICADO =======
+  const radicadoLookupInput = document.getElementById('radicadoLookupInput');
+  const btnBuscarDespacho = document.getElementById('btnBuscarDespacho');
+  const despachoResultContainer = document.getElementById('despachoResultContainer');
+  const despachoNotFoundContainer = document.getElementById('despachoNotFoundContainer');
+  
+  if(btnBuscarDespacho && radicadoLookupInput){
+    // Función para realizar la búsqueda
+    const realizarBusquedaDespacho = () => {
+      const radicado = radicadoLookupInput.value.trim();
+      if(!radicado){
+        alert('Por favor ingresa un número de radicado');
+        return;
+      }
+      
+      // Ocultar ambos contenedores primero
+      if(despachoResultContainer) despachoResultContainer.classList.remove('visible');
+      if(despachoNotFoundContainer) despachoNotFoundContainer.classList.remove('visible');
+      
+      // Buscar el despacho
+      const despacho = buscarDespachoPorRadicado(radicado);
+      
+      if(despacho){
+        // Mostrar resultado
+        document.getElementById('despachoResultNombre').textContent = despacho.nombre || '—';
+        document.getElementById('despachoResultCodigo').textContent = 'Código: ' + (despacho.codigo || '—');
+        document.getElementById('despachoResultJurisdiccion').textContent = despacho.jurisdiccion || '—';
+        document.getElementById('despachoResultJuez').textContent = despacho.juez || '—';
+        document.getElementById('despachoResultTelefono').textContent = despacho.telefono || '—';
+        document.getElementById('despachoResultDireccion').textContent = despacho.direccion || '—';
+        document.getElementById('despachoResultMunicipio').textContent = despacho.municipio || '—';
+        document.getElementById('despachoResultDepartamento').textContent = despacho.departamento || '—';
+        document.getElementById('despachoResultDistrito').textContent = despacho.distrito || '—';
+        document.getElementById('despachoResultCircuito').textContent = despacho.circuito || '—';
+        
+        if(despachoResultContainer) despachoResultContainer.classList.add('visible');
+      } else {
+        // Mostrar mensaje de no encontrado
+        if(despachoNotFoundContainer) despachoNotFoundContainer.classList.add('visible');
+      }
+    };
+    
+    btnBuscarDespacho.addEventListener('click', realizarBusquedaDespacho);
+    
+    // También buscar al presionar Enter
+    radicadoLookupInput.addEventListener('keypress', (e) => {
+      if(e.key === 'Enter'){
+        realizarBusquedaDespacho();
+      }
+    });
+  }
+  
+  // Botón copiar información del despacho
+  const btnCopiarDespacho = document.getElementById('btnCopiarDespacho');
+  if(btnCopiarDespacho){
+    btnCopiarDespacho.addEventListener('click', () => {
+      const nombre = document.getElementById('despachoResultNombre').textContent;
+      const codigo = document.getElementById('despachoResultCodigo').textContent;
+      const juez = document.getElementById('despachoResultJuez').textContent;
+      const telefono = document.getElementById('despachoResultTelefono').textContent;
+      const direccion = document.getElementById('despachoResultDireccion').textContent;
+      const municipio = document.getElementById('despachoResultMunicipio').textContent;
+      
+      const texto = `${nombre}\n${codigo}\nJuez: ${juez}\nTeléfono: ${telefono}\nDirección: ${direccion}\nMunicipio: ${municipio}`;
+      
+      navigator.clipboard.writeText(texto).then(() => {
+        btnCopiarDespacho.textContent = '✓ Copiado';
+        setTimeout(() => {
+          btnCopiarDespacho.textContent = '📋 Copiar información';
+        }, 2000);
+      }).catch(err => {
+        alert('No se pudo copiar al portapapeles');
+      });
+    });
+  }
+  
+  // Botón limpiar búsqueda
+  const btnLimpiarBusqueda = document.getElementById('btnLimpiarBusqueda');
+  if(btnLimpiarBusqueda){
+    btnLimpiarBusqueda.addEventListener('click', () => {
+      if(radicadoLookupInput) radicadoLookupInput.value = '';
+      if(despachoResultContainer) despachoResultContainer.classList.remove('visible');
+      if(despachoNotFoundContainer) despachoNotFoundContainer.classList.remove('visible');
+    });
+  }
   
   document.querySelectorAll('[data-editc]').forEach(b=> b.addEventListener('click', ()=> openClienteModal(b.dataset.editc)));
   document.querySelectorAll('[data-delc]').forEach(b=> b.addEventListener('click', ()=>{
