@@ -1,4 +1,4 @@
-<!-- Build: 1787661094 -->
+<!-- Build: 1787665500 -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -1363,6 +1363,7 @@ async function syncPublicacionesProcesales(){
   console.log(`📋 Sincronizando publicaciones de ${despachos.length} despacho(s)...`);
   
   let nuevasPublicaciones = 0;
+  let documentosExpedienteVinculados = 0;
   const hoy = new Date();
   const hace7dias = new Date(hoy);
   hace7dias.setDate(hace7dias.getDate() - 7);
@@ -1373,13 +1374,34 @@ async function syncPublicacionesProcesales(){
   for(const despacho of despachos){
     try {
       const resultado = await consultarPublicacionesDespacho(despacho.codigo, fechaInicio, fechaFin);
-      if(resultado && resultado.documentos){
-        // Buscar documentos que coincidan con radicados de procesos
-        for(const doc of resultado.documentos){
-          const procesoVinculado = vincularDocumentoAProceso(doc);
-          if(procesoVinculado){
-            nuevasPublicaciones++;
+      if(resultado){
+        // Procesar documentos de Estado (PDF del Estado)
+        if(resultado.documentos){
+          for(const doc of resultado.documentos){
+            const procesoVinculado = vincularDocumentoAProceso(doc);
+            if(procesoVinculado){
+              nuevasPublicaciones++;
+            }
           }
+        }
+        
+        // NUEVO: Procesar documentos de expediente (XXXXXXXXX - XX.pdf)
+        // Estos vienen de la consulta profunda dentro de cada Estado
+        if(resultado.documentosExpediente && resultado.documentosExpediente.length > 0){
+          console.log(`📎 ${resultado.documentosExpediente.length} documentos de expediente encontrados`);
+          
+          for(const docExp of resultado.documentosExpediente){
+            // Intentar vincular por código de expediente
+            const procesoVinculado = vincularDocumentoAProceso(docExp);
+            if(procesoVinculado){
+              documentosExpedienteVinculados++;
+            }
+          }
+        }
+        
+        // Log de resumen
+        if(resultado.consultaProfunda){
+          console.log(`🔍 Consulta profunda: ${resultado.estadosConsultados} estados consultados`);
         }
       }
     } catch(err){
@@ -1387,10 +1409,22 @@ async function syncPublicacionesProcesales(){
     }
   }
   
-  if(nuevasPublicaciones > 0){
+  const totalNuevos = nuevasPublicaciones + documentosExpedienteVinculados;
+  
+  if(totalNuevos > 0){
     savePublicaciones();
     saveProcesos();
-    mostrarNotificacion(`📄 ${nuevasPublicaciones} nuevo(s) documento(s) encontrado(s)`);
+    
+    let mensaje = '';
+    if(nuevasPublicaciones > 0 && documentosExpedienteVinculados > 0){
+      mensaje = `📄 ${nuevasPublicaciones} estado(s) + ${documentosExpedienteVinculados} documento(s) de expediente`;
+    } else if(documentosExpedienteVinculados > 0){
+      mensaje = `📎 ${documentosExpedienteVinculados} documento(s) de expediente encontrado(s)`;
+    } else {
+      mensaje = `📄 ${nuevasPublicaciones} nuevo(s) documento(s) encontrado(s)`;
+    }
+    
+    mostrarNotificacion(mensaje);
     return true;
   }
   
@@ -1423,6 +1457,7 @@ async function consultarPublicacionesDespacho(codigoDespacho, fechaInicio, fecha
   params.set('idMuni', idMuni);
   params.set('idDespacho', codigoDespacho);
   params.set('idDeptoIdCategory', idDeptoCategory);
+  params.set('profunda', 'true'); // Activar consulta profunda para obtener documentos de expediente
   
   const proxyUrl = `/api/publicaciones?${params.toString()}`;
   
@@ -1438,6 +1473,9 @@ async function consultarPublicacionesDespacho(codigoDespacho, fechaInicio, fecha
 // Vincular documento a proceso por número de radicado
 function vincularDocumentoAProceso(doc){
   if(!doc || !doc.nombre) return null;
+  
+  // Si el documento ya tiene el código de expediente extraído por el servidor
+  const codigoExpedienteDoc = doc.codigoExpediente || '';
   
   // Buscar en cada proceso
   for(let i = 0; i < procesos.length; i++){
@@ -1464,8 +1502,17 @@ function vincularDocumentoAProceso(doc){
     // Verificar si el documento corresponde a este proceso
     let coincide = false;
     
+    // Método 0 (NUEVO): Comparar código de expediente del documento con el del proceso
+    // Esto funciona para documentos de expediente extraídos por consulta profunda
+    if(codigoExpedienteDoc && codigoExpediente){
+      if(codigoExpedienteDoc === codigoExpediente){
+        coincide = true;
+        console.log(`✅ Match directo por código: ${codigoExpedienteDoc} === ${codigoExpediente}`);
+      }
+    }
+    
     // Método 1: El documento empieza con el código del expediente (202500338)
-    if(codigoExpediente && nombreDoc.startsWith(codigoExpediente.toLowerCase())){
+    if(!coincide && codigoExpediente && nombreDoc.startsWith(codigoExpediente.toLowerCase())){
       coincide = true;
     }
     
@@ -1503,16 +1550,26 @@ function vincularDocumentoAProceso(doc){
       const yaExiste = p.documentosPublicaciones.some(d => d.url === doc.url || d.nombre === doc.nombre);
       if(yaExiste) return null;
       
+      // Determinar tipo de documento
+      let tipoDoc = 'Documento';
+      if(doc.nombre.toLowerCase().includes('estado')){
+        tipoDoc = 'Estado';
+      } else if(doc.esDocumentoExpediente || doc.tipo === 'DocumentoExpediente'){
+        tipoDoc = 'DocumentoExpediente';
+      }
+      
       // Agregar documento al proceso
       p.documentosPublicaciones.push({
         nombre: doc.nombre,
         url: doc.url,
         fecha: doc.fecha || new Date().toISOString().split('T')[0],
         fechaSincronizado: new Date().toISOString(),
-        tipo: doc.nombre.toLowerCase().includes('estado') ? 'Estado' : 'Documento'
+        tipo: tipoDoc,
+        codigoExpediente: codigoExpedienteDoc || codigoExpediente,
+        estadoOrigen: doc.estadoOrigen || ''
       });
       
-      console.log(`📎 Documento vinculado: ${doc.nombre} → ${p.radicado} (código: ${codigoExpediente})`);
+      console.log(`📎 Documento vinculado: ${doc.nombre} → ${p.radicado} (código: ${codigoExpediente}, tipo: ${tipoDoc})`);
       return p;
     }
   }
