@@ -1056,6 +1056,13 @@
   .publicaciones-table .pub-tipo{display:inline-block;padding:3px 8px;background:#e0f2fe;color:#0369a1;border-radius:4px;font-size:11px;font-weight:500;}
   .publicaciones-table .pub-enlace{color:var(--accent);text-decoration:none;font-size:12px;}
   .publicaciones-table .pub-enlace:hover{text-decoration:underline;}
+  .publicaciones-table .doc-icon{margin-right:8px;}
+  .publicaciones-table .pub-tipo.pdf{background:#fee2e2;color:#dc2626;}
+  .btn-descargar-pdf{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:#3b82f6;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;transition:all 0.15s;}
+  .btn-descargar-pdf:hover{background:#2563eb;}
+  .btn-descargar-pdf:disabled{background:#9ca3af;cursor:not-allowed;}
+  .doc-row{background:#f0f9ff;}
+  .doc-row:hover{background:#e0f2fe !important;}
   .publicaciones-empty-results{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:8px;text-align:center;}
   .publicaciones-empty-results .empty-icon{font-size:32px;margin-bottom:8px;opacity:0.5;}
   .publicaciones-empty-results p{margin:0;color:var(--text-muted);font-size:13px;}
@@ -5229,30 +5236,105 @@ function bindContentEvents(){
     if(header) header.style.display = (state === 'results' || state === 'empty') ? 'flex' : 'none';
   }
   
-  // Función para renderizar publicaciones en la tabla
-  function renderPublicacionesTable(publicaciones){
+  // Función para renderizar publicaciones y documentos en la tabla
+  function renderPublicacionesTable(publicaciones, documentos){
     const tbody = document.getElementById('publicacionesTableBody');
     const countEl = document.getElementById('publicacionesCount');
     
     if(!tbody) return;
     
-    if(countEl) countEl.textContent = `${publicaciones.length} resultado${publicaciones.length !== 1 ? 's' : ''}`;
+    // Combinar publicaciones y documentos para mostrar
+    const totalItems = (publicaciones?.length || 0) + (documentos?.length || 0);
     
-    if(publicaciones.length === 0){
+    if(countEl) countEl.textContent = `${totalItems} resultado${totalItems !== 1 ? 's' : ''} (${documentos?.length || 0} documentos)`;
+    
+    if(totalItems === 0){
       showPublicacionesState('empty');
       return;
     }
     
-    tbody.innerHTML = publicaciones.map(pub => `
-      <tr>
-        <td class="pub-titulo">${pub.titulo || '—'}</td>
-        <td class="pub-fecha">${pub.fecha || '—'}</td>
-        <td><span class="pub-tipo">${pub.tipo || 'Publicación'}</span></td>
-        <td>
-          ${pub.enlace ? `<a href="${pub.enlace}" target="_blank" class="pub-enlace">Ver documento ↗</a>` : '—'}
-        </td>
-      </tr>
-    `).join('');
+    let html = '';
+    
+    // Primero mostrar documentos PDF (que es lo que el usuario quiere)
+    if(documentos && documentos.length > 0){
+      html += documentos.map(doc => `
+        <tr class="doc-row">
+          <td class="pub-titulo">
+            <span class="doc-icon">📄</span>
+            ${doc.nombre || 'Documento'}
+          </td>
+          <td class="pub-fecha">${doc.fecha || '—'}</td>
+          <td><span class="pub-tipo pdf">PDF</span></td>
+          <td>
+            <button class="btn-descargar-pdf" data-url="${encodeURIComponent(doc.url)}" data-nombre="${doc.nombre || 'documento.pdf'}">
+              ⬇️ Descargar
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+    
+    // Luego mostrar publicaciones (resumen)
+    if(publicaciones && publicaciones.length > 0){
+      html += publicaciones.map(pub => `
+        <tr>
+          <td class="pub-titulo">${pub.titulo || '—'}</td>
+          <td class="pub-fecha">${pub.fecha || '—'}</td>
+          <td><span class="pub-tipo">${pub.tipo || 'Publicación'}</span></td>
+          <td>
+            ${pub.enlace ? `<a href="${pub.enlace}" target="_blank" class="pub-enlace">Ver ↗</a>` : '—'}
+          </td>
+        </tr>
+      `).join('');
+    }
+    
+    tbody.innerHTML = html;
+    
+    // Agregar event listeners a los botones de descarga
+    document.querySelectorAll('.btn-descargar-pdf').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const url = decodeURIComponent(btn.dataset.url);
+        const nombre = btn.dataset.nombre;
+        
+        btn.disabled = true;
+        btn.innerHTML = '⏳ Descargando...';
+        
+        try {
+          const proxyUrl = `/api/documento?url=${encodeURIComponent(url)}`;
+          const response = await fetch(proxyUrl);
+          
+          if(!response.ok){
+            throw new Error(`Error ${response.status}`);
+          }
+          
+          const blob = await response.blob();
+          
+          // Crear link de descarga
+          const downloadUrl = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = downloadUrl;
+          a.download = nombre;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(downloadUrl);
+          
+          btn.innerHTML = '✅ Descargado';
+          setTimeout(() => {
+            btn.disabled = false;
+            btn.innerHTML = '⬇️ Descargar';
+          }, 2000);
+          
+        } catch(err){
+          console.error('[Descarga] Error:', err);
+          btn.innerHTML = '❌ Error';
+          setTimeout(() => {
+            btn.disabled = false;
+            btn.innerHTML = '⬇️ Descargar';
+          }, 2000);
+        }
+      });
+    });
     
     showPublicacionesState('results');
   }
@@ -5278,8 +5360,8 @@ function bindContentEvents(){
       const data = await response.json();
       
       if(data.success){
-        renderPublicacionesTable(data.publicaciones || []);
-        console.log('[Publicaciones] Recibidas:', data.total, 'publicaciones');
+        renderPublicacionesTable(data.publicaciones || [], data.documentos || []);
+        console.log('[Publicaciones] Recibidas:', data.total, 'publicaciones,', data.totalDocumentos || 0, 'documentos');
         if(data.html_preview){
           console.log('[Publicaciones] Preview HTML:', data.html_preview);
         }

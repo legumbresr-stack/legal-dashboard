@@ -7,6 +7,7 @@ Luego abrir: http://localhost:8000
 Endpoints disponibles:
   /api/rama/...           -> API de consulta de procesos
   /api/publicaciones/...  -> API de publicaciones procesales
+  /api/documento/...      -> Descarga de documentos PDF
 """
 
 import http.server
@@ -17,6 +18,7 @@ import urllib.parse
 import json
 import ssl
 import re
+import os
 from html.parser import HTMLParser
 import http.cookiejar
 
@@ -24,6 +26,9 @@ PORT = 8000
 
 # Cookie jar global para mantener sesión con publicaciones procesales
 cookie_jar = http.cookiejar.CookieJar()
+
+# Base URL para documentos
+DOCS_BASE_URL = 'https://publicacionesprocesales.ramajudicial.gov.co'
 
 class PublicacionesParser(HTMLParser):
     """Parser para extraer publicaciones del HTML de la Rama Judicial"""
@@ -108,10 +113,83 @@ class PublicacionesParser(HTMLParser):
 
 
 def parse_publicaciones_html(html_content):
-    """Parsear HTML y extraer publicaciones como JSON"""
+    """Parsear HTML y extraer publicaciones con sus documentos PDF"""
     publicaciones = []
+    documentos = []
     
-    # Buscar patrones comunes de publicaciones en el HTML
+    # ===== EXTRAER DOCUMENTOS PDF =====
+    # Patrón para enlaces a documentos PDF
+    # Ejemplo: /documents/6098902/254280154/Estado+77+del+25+de+Agosto+de+2026+%281%29.pdf/12cfd2e5-35d8-9cc8-c252-73eabebb96ad
+    pattern_pdf_link = r'href=["\']([^"\']*\.pdf[^"\']*)["\']'
+    pdf_matches = re.findall(pattern_pdf_link, html_content, re.IGNORECASE)
+    
+    for pdf_url in pdf_matches:
+        # Construir URL completa si es relativa
+        if pdf_url.startswith('/'):
+            full_url = DOCS_BASE_URL + pdf_url
+        else:
+            full_url = pdf_url
+        
+        # Extraer nombre del archivo de la URL
+        # El nombre está entre el último / antes de .pdf y .pdf
+        nombre_match = re.search(r'/([^/]+\.pdf)', pdf_url, re.IGNORECASE)
+        if nombre_match:
+            nombre_encoded = nombre_match.group(1)
+            # Decodificar URL encoding
+            nombre = urllib.parse.unquote(nombre_encoded).replace('+', ' ')
+        else:
+            nombre = 'documento.pdf'
+        
+        # Extraer fecha si está en el nombre
+        fecha_match = re.search(r'(\d+)\s+de\s+(\w+)\s+de\s+(\d{4})', nombre, re.IGNORECASE)
+        fecha = ''
+        if fecha_match:
+            fecha = f'{fecha_match.group(1)} de {fecha_match.group(2)} de {fecha_match.group(3)}'
+        
+        doc = {
+            'nombre': nombre,
+            'url': full_url,
+            'fecha': fecha,
+            'tipo': 'PDF'
+        }
+        
+        # Evitar duplicados
+        if not any(d.get('url') == doc['url'] for d in documentos):
+            documentos.append(doc)
+    
+    # ===== EXTRAER DE TABLAS DE DOCUMENTOS =====
+    # Buscar filas de tabla con documentos
+    # Patrón: <tr>...<a href="...pdf">nombre.pdf</a>...<td>fecha</td>...</tr>
+    pattern_doc_row = r'<tr[^>]*>.*?<a[^>]*href=["\']([^"\']*\.pdf[^"\']*)["\'][^>]*>([^<]+)</a>.*?</tr>'
+    doc_rows = re.findall(pattern_doc_row, html_content, re.IGNORECASE | re.DOTALL)
+    
+    for url, nombre in doc_rows:
+        if url.startswith('/'):
+            full_url = DOCS_BASE_URL + url
+        else:
+            full_url = url
+            
+        nombre_limpio = re.sub(r'<[^>]+>', '', nombre).strip()
+        
+        # Buscar fecha en la misma fila
+        fecha = ''
+        row_match = re.search(rf'<tr[^>]*>.*?{re.escape(url)}.*?</tr>', html_content, re.IGNORECASE | re.DOTALL)
+        if row_match:
+            fecha_match = re.search(r'(\d{2}-\w{3}-\d{4}\s+\d{2}:\d{2}:\d{2}|\d{4}-\d{2}-\d{2})', row_match.group(0))
+            if fecha_match:
+                fecha = fecha_match.group(1)
+        
+        doc = {
+            'nombre': nombre_limpio,
+            'url': full_url,
+            'fecha': fecha,
+            'tipo': 'PDF'
+        }
+        
+        if not any(d.get('url') == doc['url'] for d in documentos):
+            documentos.append(doc)
+    
+    # ===== EXTRAER PUBLICACIONES (resumen) =====
     # Patrón 1: Notificación por Estado
     pattern_notif = r'Notificación por Estado[^<]*No[.\s]*(\d+)[^<]*de[^<]*(\d+\s+de\s+\w+\s+de\s+\d+)'
     matches = re.findall(pattern_notif, html_content, re.IGNORECASE)
@@ -123,69 +201,48 @@ def parse_publicaciones_html(html_content):
             'numero': num
         })
     
-    # Patrón 2: Fecha de Publicación
-    pattern_fecha = r'Fecha de Publicación[:\s]*(\d{4}-\d{2}-\d{2}|\d{2}/\d{2}/\d{4})'
-    fechas = re.findall(pattern_fecha, html_content, re.IGNORECASE)
+    # Patrón 2: ESTADO N° XX DEL fecha
+    pattern_estado = r'ESTADO\s+N[°º]?\s*(\d+)\s+DEL\s+(\d+\s+DE\s+\w+\s+DE\s+\d{4})'
+    estados = re.findall(pattern_estado, html_content, re.IGNORECASE)
+    for num, fecha in estados:
+        pub = {
+            'titulo': f'Estado N° {num} del {fecha}',
+            'fecha': fecha.strip(),
+            'tipo': 'Estado',
+            'numero': num
+        }
+        if not any(p.get('titulo') == pub['titulo'] for p in publicaciones):
+            publicaciones.append(pub)
     
-    # Patrón 3: Auto interlocutorio
-    pattern_auto = r'Auto\s+(interlocutorio|de\s+sustanciación)[^<]*'
-    autos = re.findall(pattern_auto, html_content, re.IGNORECASE)
-    
-    # Patrón 4: Asset entries más genérico
+    # Patrón 3: Asset entries
     pattern_asset = r'<div[^>]*class="[^"]*asset-abstract[^"]*"[^>]*>(.*?)</div>'
     assets = re.findall(pattern_asset, html_content, re.IGNORECASE | re.DOTALL)
     
     for asset in assets:
-        # Extraer título
         title_match = re.search(r'<a[^>]*>([^<]+)</a>', asset)
-        # Extraer fecha
         date_match = re.search(r'(\d{4}-\d{2}-\d{2}|\d{2}/\d{2}/\d{4}|\d+\s+de\s+\w+\s+de\s+\d{4})', asset)
         
         if title_match:
             pub = {
                 'titulo': title_match.group(1).strip(),
                 'fecha': date_match.group(1).strip() if date_match else '',
-                'tipo': 'Publicación',
-                'raw_html': asset[:200]  # Primeros 200 chars para debug
+                'tipo': 'Publicación'
             }
-            # Evitar duplicados
             if not any(p.get('titulo') == pub['titulo'] for p in publicaciones):
                 publicaciones.append(pub)
     
-    # Patrón 5: Buscar en tablas
-    pattern_table_row = r'<tr[^>]*>(.*?)</tr>'
-    rows = re.findall(pattern_table_row, html_content, re.IGNORECASE | re.DOTALL)
-    for row in rows:
-        cells = re.findall(r'<td[^>]*>(.*?)</td>', row, re.IGNORECASE | re.DOTALL)
-        if len(cells) >= 2:
-            # Limpiar HTML de las celdas
-            clean_cells = [re.sub(r'<[^>]+>', '', cell).strip() for cell in cells]
-            if any(clean_cells) and not all(c == '' for c in clean_cells):
-                pub = {
-                    'titulo': clean_cells[0] if clean_cells else '',
-                    'fecha': clean_cells[1] if len(clean_cells) > 1 else '',
-                    'detalles': ' | '.join(clean_cells[2:]) if len(clean_cells) > 2 else '',
-                    'tipo': 'Tabla'
-                }
-                if pub['titulo'] and pub['titulo'] not in ['', 'Título', 'Fecha', 'Acciones']:
-                    if not any(p.get('titulo') == pub['titulo'] for p in publicaciones):
-                        publicaciones.append(pub)
+    # Asociar documentos con publicaciones si es posible
+    for pub in publicaciones:
+        pub['documentos'] = []
+        for doc in documentos:
+            # Si el documento menciona el mismo número de estado
+            if pub.get('numero') and pub['numero'] in doc['nombre']:
+                pub['documentos'].append(doc)
     
-    # Si no encontramos nada estructurado, buscar texto relevante
-    if not publicaciones:
-        # Buscar cualquier mención de fechas con contexto
-        pattern_context = r'([^.]{0,100}(?:notificación|estado|auto|sentencia|edicto)[^.]{0,100})'
-        contexts = re.findall(pattern_context, html_content, re.IGNORECASE)
-        for ctx in contexts[:10]:  # Máximo 10
-            clean_ctx = re.sub(r'<[^>]+>', '', ctx).strip()
-            if clean_ctx and len(clean_ctx) > 20:
-                publicaciones.append({
-                    'titulo': clean_ctx[:150],
-                    'fecha': '',
-                    'tipo': 'Extracto'
-                })
-    
-    return publicaciones
+    return {
+        'publicaciones': publicaciones,
+        'documentos': documentos
+    }
 
 
 class ProxyHandler(http.server.SimpleHTTPRequestHandler):
@@ -196,6 +253,9 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         # Si es una petición a publicaciones procesales
         elif self.path.startswith('/api/publicaciones'):
             self.proxy_publicaciones()
+        # Si es una petición para descargar un documento
+        elif self.path.startswith('/api/documento'):
+            self.proxy_documento()
         else:
             # Servir archivos estáticos normalmente
             super().do_GET()
@@ -311,23 +371,28 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                 
                 print(f'[Publicaciones] HTML recibido: {len(html_data)} bytes')
                 
-                # Parsear el HTML para extraer publicaciones
-                publicaciones = parse_publicaciones_html(html_data)
+                # Parsear el HTML para extraer publicaciones y documentos
+                parsed = parse_publicaciones_html(html_data)
+                publicaciones = parsed['publicaciones']
+                documentos = parsed['documentos']
                 
                 print(f'[Publicaciones] Publicaciones encontradas: {len(publicaciones)}')
+                print(f'[Publicaciones] Documentos encontrados: {len(documentos)}')
                 
                 # Devolver JSON con los resultados
                 result = {
                     'success': True,
                     'total': len(publicaciones),
+                    'totalDocumentos': len(documentos),
                     'publicaciones': publicaciones,
+                    'documentos': documentos,
                     'parametros': {
                         'fechaInicio': fecha_inicio,
                         'fechaFin': fecha_fin,
                         'idDespacho': id_despacho
                     },
                     'html_size': len(html_data),
-                    'html_preview': html_data[:500] if len(publicaciones) == 0 else None  # Preview solo si no hay resultados
+                    'html_preview': html_data[:1000] if len(documentos) == 0 else None
                 }
                 
                 self.send_response(200)
@@ -370,6 +435,105 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', '*')
         self.end_headers()
+    
+    def proxy_documento(self):
+        """Proxy para descargar documentos PDF de publicaciones procesales"""
+        global cookie_jar
+        
+        # Parsear query string para obtener la URL del documento
+        parsed = urllib.parse.urlparse(self.path)
+        params = urllib.parse.parse_qs(parsed.query)
+        
+        doc_url = params.get('url', [''])[0]
+        
+        if not doc_url:
+            self.send_response(400)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps({'error': 'URL del documento no proporcionada'}).encode())
+            return
+        
+        # Decodificar la URL si está encoded
+        doc_url = urllib.parse.unquote(doc_url)
+        
+        # Asegurar que sea una URL completa
+        if doc_url.startswith('/'):
+            doc_url = DOCS_BASE_URL + doc_url
+        
+        print(f'[Documento] Descargando: {doc_url[:80]}...')
+        
+        try:
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            
+            # Crear opener con cookie jar
+            opener = urllib.request.build_opener(
+                urllib.request.HTTPCookieProcessor(cookie_jar),
+                urllib.request.HTTPSHandler(context=ctx)
+            )
+            
+            # Obtener sesión si no tenemos cookies
+            if len(cookie_jar) == 0:
+                print('[Documento] Obteniendo sesión...')
+                init_url = 'https://publicacionesprocesales.ramajudicial.gov.co/web/publicaciones-procesales/inicio'
+                init_req = urllib.request.Request(init_url)
+                init_req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
+                opener.open(init_req, timeout=15)
+            
+            # Descargar el documento
+            req = urllib.request.Request(doc_url)
+            req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+            req.add_header('Accept', 'application/pdf,*/*')
+            req.add_header('Referer', 'https://publicacionesprocesales.ramajudicial.gov.co/')
+            
+            with opener.open(req, timeout=60) as response:
+                # Leer el contenido del PDF
+                pdf_data = response.read()
+                content_type = response.headers.get('Content-Type', 'application/pdf')
+                
+                # Extraer nombre del archivo de la URL
+                nombre_match = re.search(r'/([^/]+\.pdf)', doc_url, re.IGNORECASE)
+                if nombre_match:
+                    filename = urllib.parse.unquote(nombre_match.group(1)).replace('+', ' ')
+                else:
+                    filename = 'documento.pdf'
+                
+                print(f'[Documento] Descargado: {len(pdf_data)} bytes - {filename}')
+                
+                # Enviar el PDF
+                self.send_response(200)
+                self.send_header('Content-Type', content_type)
+                self.send_header('Content-Length', str(len(pdf_data)))
+                self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+                self.send_header('Access-Control-Allow-Headers', '*')
+                self.send_header('Access-Control-Expose-Headers', 'Content-Disposition')
+                self.end_headers()
+                self.wfile.write(pdf_data)
+                
+        except urllib.error.HTTPError as e:
+            print(f'[Documento] HTTP Error: {e.code} - {e.reason}')
+            self.send_response(e.code)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                'error': f'Error al descargar documento: {e.code} {e.reason}'
+            }).encode())
+        except Exception as e:
+            print(f'[Documento] Error: {str(e)}')
+            import traceback
+            traceback.print_exc()
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                'error': f'Error al descargar documento: {str(e)}'
+            }).encode())
 
 if __name__ == '__main__':
     # Permitir reutilizar el puerto
@@ -386,6 +550,7 @@ if __name__ == '__main__':
         print(f"║  Endpoints disponibles:                                   ║")
         print(f"║    /api/rama/...         - Consulta de procesos           ║")
         print(f"║    /api/publicaciones/   - Publicaciones procesales       ║")
+        print(f"║    /api/documento?url=   - Descarga de PDFs               ║")
         print(f"║                                                           ║")
         print(f"╚═══════════════════════════════════════════════════════════╝")
         print(f"")
