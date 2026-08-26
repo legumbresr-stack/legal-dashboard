@@ -930,6 +930,71 @@
   .despacho-not-found.visible{display:block;}
   .despacho-not-found-title{font-size:14px;font-weight:600;color:#dc2626;margin:0 0 8px;display:flex;align-items:center;gap:8px;}
   .despacho-not-found-text{font-size:13px;color:#991b1b;margin:0;line-height:1.5;}
+
+  /* ========== DESPACHO DETAIL PAGE ========== */
+  .despacho-detail-page{padding:24px;}
+  
+  .despacho-detail-breadcrumb{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-muted);margin-bottom:16px;}
+  .despacho-detail-breadcrumb .breadcrumb-icon{font-size:14px;}
+  .despacho-detail-breadcrumb .breadcrumb-link{color:var(--text-muted);text-decoration:none;cursor:pointer;}
+  .despacho-detail-breadcrumb .breadcrumb-link:hover{color:var(--accent);text-decoration:underline;}
+  .despacho-detail-breadcrumb .breadcrumb-separator{color:#d1d5db;}
+  .despacho-detail-breadcrumb .breadcrumb-current{color:var(--text);font-weight:500;}
+  
+  .despacho-detail-header{margin-bottom:24px;}
+  .despacho-detail-codigo{font-size:13px;color:var(--text-muted);margin-bottom:4px;display:flex;align-items:center;gap:8px;}
+  .despacho-detail-codigo .copy-icon{cursor:pointer;opacity:0.6;}
+  .despacho-detail-codigo .copy-icon:hover{opacity:1;}
+  .despacho-detail-nombre{font-size:24px;font-weight:600;color:var(--text);margin:0 0 8px;letter-spacing:-0.02em;}
+  .despacho-detail-meta{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text-muted);}
+  .despacho-detail-meta .meta-separator{color:#d1d5db;}
+  
+  .despacho-detail-tabs{display:flex;gap:4px;border-bottom:2px solid var(--border);margin-bottom:24px;}
+  .despacho-tab{padding:12px 16px;font-size:14px;color:var(--text-muted);cursor:pointer;border:none;background:none;font-weight:500;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.15s;}
+  .despacho-tab:hover{color:var(--text);}
+  .despacho-tab.active{color:var(--text);border-bottom-color:var(--accent);}
+  
+  .despacho-detail-content{min-height:300px;}
+  
+  /* Despacho Info Grid */
+  .despacho-info-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;}
+  .despacho-info-card{display:flex;align-items:flex-start;gap:12px;padding:16px;background:#f8fafc;border:1px solid var(--border);border-radius:10px;}
+  .despacho-info-card.full-width{grid-column:1/-1;}
+  .despacho-info-icon{font-size:20px;flex-shrink:0;width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:8px;border:1px solid var(--border);}
+  .despacho-info-content{flex:1;min-width:0;}
+  .despacho-info-label{font-size:12px;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.03em;font-weight:500;}
+  .despacho-info-value{font-size:14px;color:var(--text);font-weight:500;word-break:break-word;}
+  
+  /* Despacho Procesos Table */
+  .despacho-procesos-table{width:100%;border-collapse:collapse;}
+  .despacho-procesos-table th{text-align:left;font-size:12px;font-weight:500;color:var(--text-muted);padding:12px;border-bottom:1px solid var(--border);background:#fafafa;}
+  .despacho-procesos-table td{padding:12px;border-bottom:1px solid var(--border);font-size:13px;}
+  .despacho-procesos-table tr:hover{background:#f8fafc;cursor:pointer;}
+  .proceso-row-link{cursor:pointer;}
+  
+  /* Despacho Actuaciones Table */
+  .despacho-actuaciones-table{width:100%;border-collapse:collapse;}
+  .despacho-actuaciones-table th{text-align:left;font-size:12px;font-weight:500;color:var(--text-muted);padding:12px;border-bottom:1px solid var(--border);background:#fafafa;}
+  .despacho-actuaciones-table td{padding:12px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:top;}
+  .despacho-actuaciones-table .anotacion-cell{max-width:300px;white-space:pre-wrap;word-wrap:break-word;color:var(--text-muted);font-size:12px;}
+  .more-records{font-size:13px;color:var(--text-muted);text-align:center;margin-top:16px;}
+  
+  /* Despacho Empty State */
+  .despacho-empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;}
+  .despacho-empty-state .empty-icon{font-size:48px;margin-bottom:16px;opacity:0.5;}
+  .despacho-empty-state h4{font-size:16px;font-weight:600;color:var(--text);margin:0 0 8px;}
+  .despacho-empty-state p{font-size:14px;color:var(--text-muted);margin:0;}
+  
+  /* Despacho Sync */
+  .despacho-detail-sync{padding:20px 0;}
+  .sync-info-card{display:flex;align-items:flex-start;gap:16px;padding:20px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;margin-bottom:24px;}
+  .sync-info-icon{font-size:24px;}
+  .sync-info-content h4{font-size:15px;font-weight:600;color:#15803d;margin:0 0 4px;}
+  .sync-info-content p{font-size:13px;color:#166534;margin:0;}
+  .sync-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;}
+  .sync-stat{padding:20px;background:#fff;border:1px solid var(--border);border-radius:10px;text-align:center;}
+  .sync-stat-value{font-size:20px;font-weight:600;color:var(--text);margin-bottom:4px;}
+  .sync-stat-label{font-size:13px;color:var(--text-muted);}
 </style>
 </head>
 <body>
@@ -3577,8 +3642,15 @@ function renderClientes(){
 // Variables para filtros de despachos
 let despachoSearchTerm = '';
 let despachoFilterType = 'mis'; // mis, todos
+let selectedDespachoId = null; // Código del despacho seleccionado
+let selectedDespachoTab = 'informacion'; // Pestaña activa: informacion, publicaciones, procesos, sync
 
 function renderDespachos(){
+  // Si hay un despacho seleccionado, mostrar su detalle
+  if(selectedDespachoId){
+    return renderDespachoDetail();
+  }
+  
   // Extraer despachos únicos de los procesos
   const despachosMap = new Map();
   
@@ -3817,7 +3889,302 @@ function renderDespachos(){
   `;
 }
 
-// Extraer código del despacho del radicado (primeros 11 dígitos son el código del despacho)
+// Renderizar vista de detalle del despacho
+function renderDespachoDetail(){
+  // Buscar el despacho en los procesos
+  let despachoData = null;
+  let despachoDirectorio = null;
+  
+  // Primero buscar en los procesos cargados
+  const despachosMap = new Map();
+  procesos.forEach(p => {
+    if(!p.despacho) return;
+    const codigo = extractCodigoDespacho(p.radicado);
+    const key = codigo || p.despacho;
+    
+    if(!despachosMap.has(key)){
+      despachosMap.set(key, {
+        nombre: p.despacho,
+        codigo: codigo,
+        municipio: p.municipio || extractMunicipio(p.despacho),
+        especialidad: p.especialidad || extractEspecialidad(p.despacho),
+        tipo: extractTipoDespacho(p.despacho),
+        procesos: [],
+        fechaUltimaPublicacion: null,
+        ultimaSync: null
+      });
+    }
+    
+    const despacho = despachosMap.get(key);
+    despacho.procesos.push(p);
+    
+    if(p.fechaUltimaActuacion){
+      if(!despacho.fechaUltimaPublicacion || new Date(p.fechaUltimaActuacion) > new Date(despacho.fechaUltimaPublicacion)){
+        despacho.fechaUltimaPublicacion = p.fechaUltimaActuacion;
+      }
+    }
+    if(p.lastSync){
+      if(!despacho.ultimaSync || new Date(p.lastSync) > new Date(despacho.ultimaSync)){
+        despacho.ultimaSync = p.lastSync;
+      }
+    }
+  });
+  
+  // Buscar el despacho seleccionado
+  for(const [key, value] of despachosMap){
+    if(key === selectedDespachoId || value.codigo === selectedDespachoId){
+      despachoData = value;
+      break;
+    }
+  }
+  
+  // Buscar información adicional en el directorio
+  if(selectedDespachoId && directorioDespachos.length > 0){
+    despachoDirectorio = directorioDespachos.find(d => 
+      d.codigo === selectedDespachoId || 
+      d.codigo === selectedDespachoId.substring(0, 12) ||
+      d.codigo === selectedDespachoId.substring(0, 11)
+    );
+  }
+  
+  // Combinar información
+  const nombre = despachoData?.nombre || despachoDirectorio?.nombre || 'Despacho';
+  const codigo = despachoData?.codigo || despachoDirectorio?.codigo || selectedDespachoId;
+  const municipio = despachoDirectorio?.municipio || despachoData?.municipio || '—';
+  const especialidad = despachoData?.especialidad || '—';
+  const tipo = despachoDirectorio?.tipo || despachoData?.tipo || '—';
+  const juez = despachoDirectorio?.juez || '—';
+  const telefono = despachoDirectorio?.telefono || '—';
+  const direccion = despachoDirectorio?.direccion || '—';
+  const departamento = despachoDirectorio?.departamento || '—';
+  const distrito = despachoDirectorio?.distrito || '—';
+  const circuito = despachoDirectorio?.circuito || '—';
+  const jurisdiccion = despachoDirectorio?.jurisdiccion || '—';
+  const area = despachoDirectorio?.area || '—';
+  const procesosDespacho = despachoData?.procesos || [];
+  
+  // Renderizar contenido según la pestaña activa
+  let tabContent = '';
+  
+  if(selectedDespachoTab === 'informacion'){
+    tabContent = `
+      <div class="despacho-detail-info">
+        <div class="despacho-info-grid">
+          <div class="despacho-info-card">
+            <div class="despacho-info-icon">👨‍⚖️</div>
+            <div class="despacho-info-content">
+              <div class="despacho-info-label">Juez / Magistrado</div>
+              <div class="despacho-info-value">${juez}</div>
+            </div>
+          </div>
+          <div class="despacho-info-card">
+            <div class="despacho-info-icon">📞</div>
+            <div class="despacho-info-content">
+              <div class="despacho-info-label">Teléfono</div>
+              <div class="despacho-info-value">${telefono}</div>
+            </div>
+          </div>
+          <div class="despacho-info-card full-width">
+            <div class="despacho-info-icon">📍</div>
+            <div class="despacho-info-content">
+              <div class="despacho-info-label">Dirección</div>
+              <div class="despacho-info-value">${direccion}</div>
+            </div>
+          </div>
+          <div class="despacho-info-card">
+            <div class="despacho-info-icon">🏙️</div>
+            <div class="despacho-info-content">
+              <div class="despacho-info-label">Municipio</div>
+              <div class="despacho-info-value">${municipio}</div>
+            </div>
+          </div>
+          <div class="despacho-info-card">
+            <div class="despacho-info-icon">🗺️</div>
+            <div class="despacho-info-content">
+              <div class="despacho-info-label">Departamento</div>
+              <div class="despacho-info-value">${departamento}</div>
+            </div>
+          </div>
+          <div class="despacho-info-card">
+            <div class="despacho-info-icon">⚖️</div>
+            <div class="despacho-info-content">
+              <div class="despacho-info-label">Distrito Judicial</div>
+              <div class="despacho-info-value">${distrito}</div>
+            </div>
+          </div>
+          <div class="despacho-info-card">
+            <div class="despacho-info-icon">🔄</div>
+            <div class="despacho-info-content">
+              <div class="despacho-info-label">Circuito</div>
+              <div class="despacho-info-value">${circuito}</div>
+            </div>
+          </div>
+          <div class="despacho-info-card">
+            <div class="despacho-info-icon">📋</div>
+            <div class="despacho-info-content">
+              <div class="despacho-info-label">Jurisdicción</div>
+              <div class="despacho-info-value">${jurisdiccion}</div>
+            </div>
+          </div>
+          <div class="despacho-info-card">
+            <div class="despacho-info-icon">🏛️</div>
+            <div class="despacho-info-content">
+              <div class="despacho-info-label">Área</div>
+              <div class="despacho-info-value">${area}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  } else if(selectedDespachoTab === 'procesos'){
+    tabContent = `
+      <div class="despacho-detail-procesos">
+        ${procesosDespacho.length > 0 ? `
+          <table class="despacho-procesos-table">
+            <thead>
+              <tr>
+                <th>Radicado</th>
+                <th>Nombre</th>
+                <th>Estado</th>
+                <th>Última actuación</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${procesosDespacho.map(p => `
+                <tr class="proceso-row-link" data-proceso-id="${p.id}">
+                  <td><span class="radicado-link">${p.radicado || '—'}</span></td>
+                  <td>${p.nombre || '—'}</td>
+                  <td><span class="badge ${p.estado === 'Activo' ? 'green' : p.estado === 'Finalizado' ? 'gray' : 'amber'}">${p.estado || '—'}</span></td>
+                  <td>${p.fechaUltimaActuacion ? new Date(p.fechaUltimaActuacion).toLocaleDateString('es-CO') : '—'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        ` : `
+          <div class="despacho-empty-state">
+            <div class="empty-icon">📁</div>
+            <h4>Sin procesos</h4>
+            <p>No hay procesos vinculados a este despacho.</p>
+          </div>
+        `}
+      </div>
+    `;
+  } else if(selectedDespachoTab === 'publicaciones'){
+    // Recopilar todas las actuaciones de los procesos de este despacho
+    const actuaciones = [];
+    procesosDespacho.forEach(p => {
+      if(p.actuaciones && p.actuaciones.length > 0){
+        p.actuaciones.forEach(act => {
+          actuaciones.push({
+            ...act,
+            radicado: p.radicado,
+            procesoId: p.id,
+            procesoNombre: p.nombre
+          });
+        });
+      }
+    });
+    actuaciones.sort((a, b) => new Date(b.fecha || b.fechaActuacion) - new Date(a.fecha || a.fechaActuacion));
+    
+    tabContent = `
+      <div class="despacho-detail-publicaciones">
+        ${actuaciones.length > 0 ? `
+          <table class="despacho-actuaciones-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Radicado</th>
+                <th>Actuación</th>
+                <th>Anotación</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${actuaciones.slice(0, 50).map(act => `
+                <tr>
+                  <td class="fecha-cell">${act.fecha ? new Date(act.fecha).toLocaleDateString('es-CO') : '—'}</td>
+                  <td><span class="radicado-link" data-proceso-id="${act.procesoId}">${act.radicado || '—'}</span></td>
+                  <td>${act.actuacion || '—'}</td>
+                  <td class="anotacion-cell">${act.anotacion || '—'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          ${actuaciones.length > 50 ? `<p class="more-records">Mostrando 50 de ${actuaciones.length} publicaciones</p>` : ''}
+        ` : `
+          <div class="despacho-empty-state">
+            <div class="empty-icon">📄</div>
+            <h4>Sin publicaciones</h4>
+            <p>No hay publicaciones procesales para este despacho.</p>
+          </div>
+        `}
+      </div>
+    `;
+  } else if(selectedDespachoTab === 'sync'){
+    tabContent = `
+      <div class="despacho-detail-sync">
+        <div class="sync-info-card">
+          <div class="sync-info-icon">🔄</div>
+          <div class="sync-info-content">
+            <h4>Sincronización automática</h4>
+            <p>Los procesos de este despacho se sincronizan automáticamente cada 5 minutos.</p>
+          </div>
+        </div>
+        <div class="sync-stats">
+          <div class="sync-stat">
+            <div class="sync-stat-value">${procesosDespacho.length}</div>
+            <div class="sync-stat-label">Procesos vinculados</div>
+          </div>
+          <div class="sync-stat">
+            <div class="sync-stat-value">${despachoData?.ultimaSync ? new Date(despachoData.ultimaSync).toLocaleString('es-CO') : '—'}</div>
+            <div class="sync-stat-label">Última sincronización</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  
+  return `
+    <div class="despacho-detail-page">
+      <!-- Breadcrumb -->
+      <div class="despacho-detail-breadcrumb">
+        <span class="breadcrumb-icon">🏛</span>
+        <a href="#" class="breadcrumb-link" id="backToDespachos">Despachos</a>
+        <span class="breadcrumb-separator">›</span>
+        <span class="breadcrumb-current">${nombre}</span>
+      </div>
+      
+      <!-- Header -->
+      <div class="despacho-detail-header">
+        <div class="despacho-detail-header-left">
+          <div class="despacho-detail-codigo">Despacho ${codigo} <span class="copy-icon" id="copyCodigo" title="Copiar código">📋</span></div>
+          <h1 class="despacho-detail-nombre">${nombre}</h1>
+          <div class="despacho-detail-meta">
+            <span class="meta-item">${tipo}</span>
+            <span class="meta-separator">•</span>
+            <span class="meta-item">${especialidad}</span>
+            <span class="meta-separator">•</span>
+            <span class="meta-item">${municipio}</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Tabs -->
+      <div class="despacho-detail-tabs">
+        <button class="despacho-tab ${selectedDespachoTab === 'informacion' ? 'active' : ''}" data-despacho-tab="informacion">Información</button>
+        <button class="despacho-tab ${selectedDespachoTab === 'publicaciones' ? 'active' : ''}" data-despacho-tab="publicaciones">Publicaciones procesales</button>
+        <button class="despacho-tab ${selectedDespachoTab === 'procesos' ? 'active' : ''}" data-despacho-tab="procesos">Procesos</button>
+        <button class="despacho-tab ${selectedDespachoTab === 'sync' ? 'active' : ''}" data-despacho-tab="sync">Sync</button>
+      </div>
+      
+      <!-- Tab Content -->
+      <div class="despacho-detail-content">
+        ${tabContent}
+      </div>
+    </div>
+  `;
+}
+
+// Extraer código del despacho del radicado (primeros 12 dígitos son el código del despacho)
 function extractCodigoDespacho(radicado){
   if(!radicado) return '';
   const clean = radicado.replace(/[-\s]/g, '');
@@ -4485,6 +4852,62 @@ function bindContentEvents(){
     });
   });
   
+  // ======= CLICK EN FILA DE DESPACHO =======
+  document.querySelectorAll('.despacho-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const codigo = row.dataset.codigo;
+      if(codigo){
+        selectedDespachoId = codigo;
+        selectedDespachoTab = 'informacion';
+        render();
+      }
+    });
+  });
+  
+  // ======= VOLVER A LISTA DE DESPACHOS =======
+  const backToDespachos = document.getElementById('backToDespachos');
+  if(backToDespachos){
+    backToDespachos.addEventListener('click', (e) => {
+      e.preventDefault();
+      selectedDespachoId = null;
+      selectedDespachoTab = 'informacion';
+      render();
+    });
+  }
+  
+  // ======= PESTAÑAS DEL DETALLE DE DESPACHO =======
+  document.querySelectorAll('.despacho-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      selectedDespachoTab = tab.dataset.despachoTab;
+      render();
+    });
+  });
+  
+  // ======= COPIAR CÓDIGO DEL DESPACHO =======
+  const copyCodigo = document.getElementById('copyCodigo');
+  if(copyCodigo){
+    copyCodigo.addEventListener('click', () => {
+      const codigo = selectedDespachoId || '';
+      navigator.clipboard.writeText(codigo).then(() => {
+        copyCodigo.textContent = '✓';
+        setTimeout(() => { copyCodigo.textContent = '📋'; }, 1500);
+      });
+    });
+  }
+  
+  // ======= CLICK EN PROCESO DESDE DESPACHO =======
+  document.querySelectorAll('.proceso-row-link').forEach(row => {
+    row.addEventListener('click', () => {
+      const procesoId = row.dataset.procesoId;
+      if(procesoId){
+        selectedDespachoId = null;
+        selectedProcessId = procesoId;
+        currentView = 'procesos';
+        render();
+      }
+    });
+  });
+
   // ======= BÚSQUEDA DE DESPACHO POR RADICADO =======
   const radicadoLookupInput = document.getElementById('radicadoLookupInput');
   const btnBuscarDespacho = document.getElementById('btnBuscarDespacho');
