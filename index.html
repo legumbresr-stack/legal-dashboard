@@ -3723,7 +3723,8 @@ function renderDespachos(){
           <!-- No encontrado -->
           <div id="despachoNotFoundContainer" class="despacho-not-found">
             <div class="despacho-not-found-title">⚠️ Despacho no encontrado</div>
-            <p class="despacho-not-found-text">No se encontró un despacho con el código extraído del radicado ingresado. Verifica que el número de radicado sea correcto (debe tener al menos 11 dígitos).</p>
+            <p class="despacho-not-found-text">No se encontró un despacho con el código <strong id="codigoNoEncontrado"></strong>. 
+            Esto puede ocurrir si el despacho no está en el directorio judicial cargado, o si el radicado no es válido.</p>
           </div>
         </div>
       </div>
@@ -4499,12 +4500,18 @@ function bindContentEvents(){
         return;
       }
       
+      if(radicado.replace(/[-\s]/g, '').length < 12){
+        alert('El radicado debe tener al menos 12 dígitos para identificar el despacho');
+        return;
+      }
+      
       // Ocultar ambos contenedores primero
       if(despachoResultContainer) despachoResultContainer.classList.remove('visible');
       if(despachoNotFoundContainer) despachoNotFoundContainer.classList.remove('visible');
       
       // Buscar el despacho
       const despacho = buscarDespachoPorRadicado(radicado);
+      const codigoExtraido = radicado.replace(/[-\s]/g, '').substring(0, 12);
       
       if(despacho){
         // Mostrar resultado
@@ -4521,7 +4528,9 @@ function bindContentEvents(){
         
         if(despachoResultContainer) despachoResultContainer.classList.add('visible');
       } else {
-        // Mostrar mensaje de no encontrado
+        // Mostrar mensaje de no encontrado con el código
+        const codigoNoEncontrado = document.getElementById('codigoNoEncontrado');
+        if(codigoNoEncontrado) codigoNoEncontrado.textContent = codigoExtraido;
         if(despachoNotFoundContainer) despachoNotFoundContainer.classList.add('visible');
       }
     };
