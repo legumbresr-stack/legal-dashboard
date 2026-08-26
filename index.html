@@ -986,6 +986,32 @@
   .despacho-empty-state .empty-icon{font-size:48px;margin-bottom:16px;opacity:0.5;}
   .despacho-empty-state h4{font-size:16px;font-weight:600;color:var(--text);margin:0 0 8px;}
   .despacho-empty-state p{font-size:14px;color:var(--text-muted);margin:0;}
+  .despacho-empty-state.despacho-empty-small{padding:30px 20px;}
+  .despacho-empty-state.despacho-empty-small .empty-icon{font-size:32px;margin-bottom:8px;}
+  
+  /* Publicaciones Procesales Panel */
+  .publicaciones-oficial-panel{background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);border:1px solid #93c5fd;border-radius:12px;padding:24px;margin-bottom:24px;}
+  .publicaciones-oficial-header{display:flex;align-items:flex-start;gap:16px;margin-bottom:20px;}
+  .publicaciones-oficial-icon{font-size:32px;flex-shrink:0;}
+  .publicaciones-oficial-info h4{font-size:16px;font-weight:600;color:#1e40af;margin:0 0 6px;}
+  .publicaciones-oficial-info p{font-size:13px;color:#3b82f6;margin:0;line-height:1.5;}
+  .publicaciones-filtros{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px;padding:16px;background:rgba(255,255,255,0.7);border-radius:8px;}
+  .filtro-item{display:flex;align-items:center;gap:6px;}
+  .filtro-label{font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;}
+  .filtro-value{font-size:13px;color:#1e293b;font-weight:500;background:#fff;padding:4px 10px;border-radius:4px;border:1px solid #e2e8f0;}
+  .publicaciones-actions{display:flex;gap:12px;}
+  .publicaciones-actions .btn{display:flex;align-items:center;gap:8px;}
+  .publicaciones-divider{display:flex;align-items:center;gap:16px;margin:24px 0 20px;color:var(--text-muted);font-size:13px;font-weight:500;}
+  .publicaciones-divider::before,.publicaciones-divider::after{content:'';flex:1;height:1px;background:var(--border);}
+  .publicaciones-instrucciones{margin-top:16px;background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:0;}
+  .publicaciones-instrucciones .instrucciones-content{display:flex;align-items:flex-start;gap:12px;padding:16px;}
+  .publicaciones-instrucciones .instrucciones-icon{font-size:20px;flex-shrink:0;}
+  .publicaciones-instrucciones .instrucciones-text{flex:1;font-size:13px;color:#92400e;line-height:1.5;}
+  .publicaciones-instrucciones .instrucciones-text strong{color:#78350f;}
+  .publicaciones-instrucciones .instrucciones-text ul{margin:8px 0 0 16px;padding:0;}
+  .publicaciones-instrucciones .instrucciones-text li{margin-bottom:4px;}
+  .publicaciones-instrucciones .btn-close-instrucciones{background:none;border:none;cursor:pointer;font-size:16px;color:#92400e;padding:4px;flex-shrink:0;}
+  .publicaciones-instrucciones .btn-close-instrucciones:hover{color:#78350f;}
   
   /* Despacho Sync */
   .despacho-detail-sync{padding:20px 0;}
@@ -4128,8 +4154,48 @@ function renderDespachoDetail(){
     });
     actuaciones.sort((a, b) => new Date(b.fecha || b.fechaActuacion) - new Date(a.fecha || a.fechaActuacion));
     
+    // Construir URL de publicaciones procesales con parámetros del despacho
+    // El código del despacho necesita tener 12 dígitos (con 0 inicial si aplica)
+    const codigoConCero = codigo.length === 11 && departamento === 'ATLÁNTICO' ? '0' + codigo : codigo;
+    
     tabContent = `
       <div class="despacho-detail-publicaciones">
+        <!-- Panel de consulta oficial -->
+        <div class="publicaciones-oficial-panel">
+          <div class="publicaciones-oficial-header">
+            <div class="publicaciones-oficial-icon">🔍</div>
+            <div class="publicaciones-oficial-info">
+              <h4>Consulta de Publicaciones Procesales</h4>
+              <p>Consulta las publicaciones procesales oficiales de este despacho en el portal de la Rama Judicial.</p>
+            </div>
+          </div>
+          <div class="publicaciones-filtros">
+            <div class="filtro-item">
+              <span class="filtro-label">Departamento:</span>
+              <span class="filtro-value">${departamento}</span>
+            </div>
+            <div class="filtro-item">
+              <span class="filtro-label">Municipio:</span>
+              <span class="filtro-value">${municipio}</span>
+            </div>
+            <div class="filtro-item">
+              <span class="filtro-label">Código despacho:</span>
+              <span class="filtro-value">${codigoConCero}</span>
+            </div>
+          </div>
+          <div class="publicaciones-actions">
+            <button class="btn btn-primary" id="btnConsultarPublicaciones" data-codigo="${codigoConCero}" data-depto="${departamento}" data-muni="${municipio}">
+              🌐 Consultar en Portal Oficial
+            </button>
+          </div>
+        </div>
+        
+        <!-- Separador -->
+        <div class="publicaciones-divider">
+          <span>Actuaciones sincronizadas localmente</span>
+        </div>
+        
+        <!-- Tabla de actuaciones locales -->
         ${actuaciones.length > 0 ? `
           <table class="despacho-actuaciones-table">
             <thead>
@@ -4153,10 +4219,9 @@ function renderDespachoDetail(){
           </table>
           ${actuaciones.length > 50 ? `<p class="more-records">Mostrando 50 de ${actuaciones.length} publicaciones</p>` : ''}
         ` : `
-          <div class="despacho-empty-state">
+          <div class="despacho-empty-state despacho-empty-small">
             <div class="empty-icon">📄</div>
-            <h4>Sin publicaciones</h4>
-            <p>No hay publicaciones procesales para este despacho.</p>
+            <p>No hay actuaciones sincronizadas localmente para este despacho.</p>
           </div>
         `}
       </div>
@@ -4963,6 +5028,45 @@ function bindContentEvents(){
         copyCodigo.textContent = '✓';
         setTimeout(() => { copyCodigo.textContent = '📋'; }, 1500);
       });
+    });
+  }
+  
+  // ======= CONSULTAR PUBLICACIONES PROCESALES =======
+  const btnConsultarPublicaciones = document.getElementById('btnConsultarPublicaciones');
+  if(btnConsultarPublicaciones){
+    btnConsultarPublicaciones.addEventListener('click', () => {
+      const codigoDespacho = btnConsultarPublicaciones.dataset.codigo || '';
+      // Abrir página de publicaciones procesales de la Rama Judicial
+      // La página filtra por el código del despacho
+      const baseUrl = 'https://publicacionesprocesales.ramajudicial.gov.co/';
+      // Crear una nueva ventana con la URL base - el usuario selecciona los filtros manualmente
+      // ya que la API no permite precargar filtros directamente en la URL
+      window.open(baseUrl, '_blank', 'noopener,noreferrer');
+      
+      // Mostrar instrucciones al usuario
+      const instrucciones = document.createElement('div');
+      instrucciones.className = 'publicaciones-instrucciones';
+      instrucciones.innerHTML = `
+        <div class="instrucciones-content">
+          <div class="instrucciones-icon">ℹ️</div>
+          <div class="instrucciones-text">
+            <strong>Instrucciones:</strong> En la página abierta, selecciona los filtros:
+            <ul>
+              <li>Departamento: <strong>${btnConsultarPublicaciones.dataset.depto || ''}</strong></li>
+              <li>Municipio: <strong>${btnConsultarPublicaciones.dataset.muni || ''}</strong></li>
+              <li>Despacho: Busca el código <strong>${codigoDespacho}</strong></li>
+            </ul>
+          </div>
+          <button class="btn-close-instrucciones" onclick="this.parentElement.parentElement.remove()">✕</button>
+        </div>
+      `;
+      
+      const panel = document.querySelector('.publicaciones-oficial-panel');
+      if(panel){
+        const existing = panel.querySelector('.publicaciones-instrucciones');
+        if(existing) existing.remove();
+        panel.appendChild(instrucciones);
+      }
     });
   }
   
