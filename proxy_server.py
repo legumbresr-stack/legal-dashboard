@@ -582,9 +582,11 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                 estados_consultados = 0
                 
                 if consulta_profunda and urls_detalle:
-                    print(f'[Publicaciones] Iniciando consulta profunda de {len(urls_detalle)} estados...')
+                    # Limitar a máximo 3 estados para que sea rápido
+                    urls_a_consultar = urls_detalle[:3]
+                    print(f'[Publicaciones] Iniciando consulta profunda de {len(urls_a_consultar)} estados (de {len(urls_detalle)} encontrados)...')
                     
-                    for url_estado in urls_detalle[:10]:  # Limitar a 10 estados para no sobrecargar
+                    for url_estado in urls_a_consultar:
                         try:
                             print(f'[Publicaciones] Consultando estado: {url_estado[:60]}...')
                             
@@ -593,7 +595,7 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                             req_detalle.add_header('Accept', 'text/html,application/xhtml+xml')
                             req_detalle.add_header('Referer', full_url)
                             
-                            with opener.open(req_detalle, timeout=10) as resp_detalle:
+                            with opener.open(req_detalle, timeout=5) as resp_detalle:
                                 html_detalle = resp_detalle.read().decode('utf-8', errors='ignore')
                                 
                                 # Extraer título del estado de la URL o del HTML
@@ -613,7 +615,7 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                                 print(f'[Publicaciones] Estado consultado: {len(docs_estado)} documentos de expediente encontrados')
                                 
                         except Exception as e:
-                            print(f'[Publicaciones] Error consultando estado: {str(e)}')
+                            print(f'[Publicaciones] Error consultando estado (timeout/red): {str(e)[:50]}')
                             continue
                     
                     print(f'[Publicaciones] Consulta profunda completa: {estados_consultados} estados, {len(documentos_expediente)} documentos de expediente')
