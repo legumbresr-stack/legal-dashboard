@@ -1420,14 +1420,25 @@ async function syncPublicacionesProcesales(){
   let nuevasPublicaciones = 0;
   let documentosExpedienteVinculados = 0;
   const hoy = new Date();
-  const hace30dias = new Date(hoy);
-  hace30dias.setDate(hace30dias.getDate() - 30); // Ampliar a 30 días para capturar más documentos
   
-  // Usar año actual del sistema
-  const fechaInicio = hace30dias.toISOString().split('T')[0];
+  // Buscar el año más antiguo de los procesos para obtener historial completo
+  let añoMasAntiguo = hoy.getFullYear();
+  procesos.forEach(p => {
+    if(p.radicado && p.radicado.length >= 19){
+      // Extraer año del radicado (posiciones 12-15, ej: 11001311002720250033800 -> 2025)
+      const radicadoLimpio = p.radicado.replace(/[-\s]/g, '');
+      const añoRadicado = parseInt(radicadoLimpio.substring(12, 16));
+      if(añoRadicado && añoRadicado >= 2000 && añoRadicado < añoMasAntiguo){
+        añoMasAntiguo = añoRadicado;
+      }
+    }
+  });
+  
+  // Buscar desde el 1 de enero del año más antiguo
+  const fechaInicio = `${añoMasAntiguo}-01-01`;
   const fechaFin = hoy.toISOString().split('T')[0];
   
-  console.log(`📅 Rango de búsqueda: ${fechaInicio} a ${fechaFin}`);
+  console.log(`📅 Rango de búsqueda histórico: ${fechaInicio} a ${fechaFin} (desde año ${añoMasAntiguo})`);
   
   for(const despacho of despachos){
     try {
@@ -1516,7 +1527,7 @@ async function consultarPublicacionesDespacho(codigoDespacho, fechaInicio, fecha
   params.set('idDespacho', codigoDespacho);
   params.set('idDeptoIdCategory', idDeptoCategory);
   params.set('profunda', 'true'); // Activar consulta profunda para obtener documentos de expediente
-  params.set('maxEstados', '15'); // Consultar hasta 15 estados para encontrar más documentos
+  params.set('maxEstados', '30'); // Consultar hasta 30 estados para obtener historial completo
   
   const proxyUrl = `/api/publicaciones?${params.toString()}`;
   
