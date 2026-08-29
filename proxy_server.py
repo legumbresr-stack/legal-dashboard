@@ -583,14 +583,29 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                     
                     for url_estado in urls_a_consultar:
                         try:
-                            print(f'[Publicaciones] Consultando estado: {url_estado[:60]}...')
+                            # Asegurar que la URL esté correctamente codificada
+                            # Parsear y re-codificar la URL para manejar caracteres especiales
+                            try:
+                                parsed_url = urllib.parse.urlparse(url_estado)
+                                # Re-codificar el query string
+                                if parsed_url.query:
+                                    query_params_estado = urllib.parse.parse_qs(parsed_url.query, keep_blank_values=True)
+                                    query_encoded = urllib.parse.urlencode(query_params_estado, doseq=True)
+                                    url_estado_clean = f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}?{query_encoded}"
+                                else:
+                                    url_estado_clean = url_estado
+                            except:
+                                url_estado_clean = url_estado
                             
-                            req_detalle = urllib.request.Request(url_estado)
+                            print(f'[Publicaciones] Consultando estado: {url_estado_clean[:80]}...')
+                            
+                            req_detalle = urllib.request.Request(url_estado_clean)
                             req_detalle.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
                             req_detalle.add_header('Accept', 'text/html,application/xhtml+xml')
+                            req_detalle.add_header('Accept-Language', 'es-CO,es;q=0.9')
                             req_detalle.add_header('Referer', full_url)
                             
-                            with opener.open(req_detalle, timeout=5) as resp_detalle:
+                            with opener.open(req_detalle, timeout=20) as resp_detalle:
                                 html_detalle = resp_detalle.read().decode('utf-8', errors='ignore')
                                 
                                 # Extraer título del estado de la URL o del HTML
