@@ -1969,12 +1969,15 @@ function renderRevisarProcesos(){
           else if(p.status === 'error') estadoHtml = '<span style="color:#dc2626;font-size:12px;">Error: ' + (p.error || 'Desconocido') + '</span>';
           else estadoHtml = '<span style="color:#6b7280;font-size:12px;">' + p.status + '</span>';
           
+          // Mostrar badge de EMPLAZADO si aplica
+          const emplazadoBadge = p.esEmplazado ? '<span style="background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;margin-left:6px;">EMPLAZADO</span>' : '';
+          
           const canSelect = p.status === 'listo' || p.status === 'privado';
           
           return `
-          <tr data-id="${p.id}">
+          <tr data-id="${p.id}" style="${p.esEmplazado ? 'background:#fffbeb;' : ''}">
             <td><input type="checkbox" class="checkbox process-checkbox" data-id="${p.id}" ${selectedProcessIds.has(p.id) ? 'checked' : ''} ${!canSelect ? 'disabled' : ''}></td>
-            <td><a href="#" class="radicado-link">${p.radicado}</a></td>
+            <td><a href="#" class="radicado-link">${p.radicado}</a>${emplazadoBadge}</td>
             <td>${p.municipio || '—'}</td>
             <td>${p.especialidad || '—'}</td>
             <td>${p.despacho || '—'}</td>
@@ -2101,81 +2104,58 @@ async function consultarRadicado(radicado){
     const data = await response.json();
     
     if(data.procesos && data.procesos.length > 0){
-      // NUEVO: Separar proceso principal de procesos emplazados/relacionados
-      // El proceso principal es el que NO tiene "(Emplazado)" en sujetosProcesales
-      let procesoPrincipal = null;
-      let procesosRelacionados = [];
+      // Devolver TODOS los procesos encontrados como array
+      // El usuario decidirá cuál(es) agregar
+      const resultados = [];
       
       for(const proc of data.procesos){
+        const parsed = parseDespacho(proc.despacho);
+        
+        // Detectar si es emplazado
         const esEmplazado = proc.sujetosProcesales && 
           (proc.sujetosProcesales.toLowerCase().includes('(emplazado)') ||
            proc.sujetosProcesales.toLowerCase().includes('emplazado)'));
         
-        if(!esEmplazado && !procesoPrincipal){
-          procesoPrincipal = proc;
-        } else {
-          // Es emplazado o ya tenemos principal
-          procesosRelacionados.push({
-            idProceso: proc.idProceso,
-            radicado: proc.llaveProceso,
-            despacho: proc.despacho,
-            fechaProceso: proc.fechaProceso,
-            fechaUltimaActuacion: proc.fechaUltimaActuacion,
-            sujetosProcesales: proc.sujetosProcesales,
-            esEmplazado: esEmplazado,
-            tipo: esEmplazado ? 'Emplazado' : 'Relacionado'
-          });
-        }
+        // Detectar si es proceso privado
+        const esPrivado = proc.esPrivado === true || 
+                          (proc.sujetosProcesales && proc.sujetosProcesales.includes('PROCESO PRIVADO'));
+        
+        resultados.push({
+          id: proc.idProceso,
+          radicado: proc.llaveProceso,
+          radicadoOriginal: radicado,
+          municipio: parsed.municipio || proc.departamento,
+          especialidad: parsed.especialidad,
+          despacho: parsed.despacho,
+          fechaProceso: proc.fechaProceso,
+          fechaUltimaActuacion: proc.fechaUltimaActuacion,
+          sujetosProcesales: proc.sujetosProcesales,
+          esPrivado: esPrivado,
+          esEmplazado: esEmplazado,
+          status: esPrivado ? 'privado' : 'listo',
+          raw: proc
+        });
       }
       
-      // Si no encontramos principal (todos son emplazados), usar el primero
-      if(!procesoPrincipal){
-        procesoPrincipal = data.procesos[0];
-        procesosRelacionados = procesosRelacionados.filter(p => p.idProceso !== procesoPrincipal.idProceso);
-      }
-      
-      const parsed = parseDespacho(procesoPrincipal.despacho);
-      
-      // Detectar si es proceso privado
-      const esPrivado = procesoPrincipal.esPrivado === true || 
-                        (procesoPrincipal.sujetosProcesales && procesoPrincipal.sujetosProcesales.includes('PROCESO PRIVADO'));
-      
-      console.log(`📋 Radicado ${normalized}: ${data.procesos.length} proceso(s), ${procesosRelacionados.length} relacionado(s)/emplazado(s)`);
-      
-      return {
-        id: procesoPrincipal.idProceso,
-        radicado: procesoPrincipal.llaveProceso,
-        radicadoOriginal: radicado,
-        municipio: parsed.municipio || procesoPrincipal.departamento,
-        especialidad: parsed.especialidad,
-        despacho: parsed.despacho,
-        fechaProceso: procesoPrincipal.fechaProceso,
-        fechaUltimaActuacion: procesoPrincipal.fechaUltimaActuacion,
-        sujetosProcesales: procesoPrincipal.sujetosProcesales,
-        esPrivado: esPrivado,
-        status: esPrivado ? 'privado' : 'listo',
-        raw: procesoPrincipal,
-        // NUEVO: Guardar procesos relacionados/emplazados
-        procesosRelacionados: procesosRelacionados,
-        cantidadRelacionados: procesosRelacionados.length
-      };
+      console.log(`📋 Radicado ${normalized}: ${resultados.length} proceso(s) encontrado(s)`);
+      return resultados;
     } else {
-      return {
+      return [{
         id: 'err_' + Date.now() + '_' + Math.random(),
         radicado: radicado,
         radicadoOriginal: radicado,
         status: 'error',
         error: 'No encontrado'
-      };
+      }];
     }
   } catch(error) {
-    return {
+    return [{
       id: 'err_' + Date.now() + '_' + Math.random(),
       radicado: radicado,
       radicadoOriginal: radicado,
       status: 'error',
       error: error.message
-    };
+    }];
   }
 }
 
@@ -2187,22 +2167,26 @@ async function consultarRadicados(radicadosList){
   // Show loading
   document.getElementById('content').innerHTML = renderLoadingProcesos();
   
-  // Consult each radicado
+  // Consult each radicado - ahora devuelve array de procesos
   for(const radicado of radicadosList){
-    const result = await consultarRadicado(radicado);
-    consultedProcesses.push(result);
+    const results = await consultarRadicado(radicado);
     
-    // Auto-select if listo (privados no se auto-seleccionan para que el usuario decida)
-    if(result.status === 'listo'){
-      selectedProcessIds.add(result.id);
+    // Agregar todos los procesos encontrados
+    for(const result of results){
+      consultedProcesses.push(result);
+      
+      // Auto-select solo si es "listo" y NO es emplazado
+      // Los emplazados no se auto-seleccionan para que el usuario decida
+      if(result.status === 'listo' && !result.esEmplazado){
+        selectedProcessIds.add(result.id);
+      }
     }
-    // Los procesos privados no se auto-seleccionan - el usuario debe seleccionarlos manualmente
   }
   
   // Check for duplicates (already in procesos array)
   consultedProcesses.forEach(cp => {
     if(cp.status === 'listo'){
-      const exists = procesos.find(p => p.radicado === cp.radicado);
+      const exists = procesos.find(p => p.radicado === cp.radicado && p.id === cp.id);
       if(exists){
         cp.status = 'duplicado';
         selectedProcessIds.delete(cp.id);
@@ -3292,9 +3276,12 @@ function renderProcesoDetalle(proceso){
 }
 
 function renderRelacionadosTab(proceso){
-  const relacionados = proceso.procesosRelacionados || [];
+  // Buscar otros procesos con el mismo radicado que también fueron agregados
+  const mismosRadicado = procesos.filter(p => 
+    p.radicado === proceso.radicado && p.id !== proceso.id
+  );
   
-  if(relacionados.length === 0){
+  if(mismosRadicado.length === 0){
     return `
       <div class="detail-section">
         <h3 class="detail-section-title">Procesos relacionados</h3>
@@ -3302,8 +3289,8 @@ function renderRelacionadosTab(proceso){
           <div class="actuaciones-empty-icon">🔗</div>
           <div class="actuaciones-empty-title">Sin procesos relacionados</div>
           <div class="actuaciones-empty-desc">
-            Este radicado solo tiene un proceso asociado.<br>
-            Cuando un radicado tiene múltiples procesos (ej: emplazados), aparecerán aquí.
+            No hay otros procesos con el mismo radicado agregados.<br>
+            Si el radicado tiene procesos emplazados, aparecerán aquí cuando los agregues.
           </div>
         </div>
       </div>
@@ -3314,20 +3301,20 @@ function renderRelacionadosTab(proceso){
     <div class="detail-section">
       <h3 class="detail-section-title">Procesos relacionados</h3>
       <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px;">
-        Este radicado tiene ${relacionados.length} proceso(s) adicional(es) vinculado(s)
+        Hay ${mismosRadicado.length} proceso(s) con el mismo radicado agregado(s)
       </p>
       
       <div class="relacionados-list">
-        ${relacionados.map((rel, idx) => `
-          <div class="relacionado-card" style="border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;${rel.esEmplazado ? 'border-left:4px solid var(--amber-text);' : ''}">
+        ${mismosRadicado.map((rel, idx) => `
+          <div class="relacionado-card" style="border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;cursor:pointer;${rel.esEmplazado ? 'border-left:4px solid var(--amber-text);' : ''}" onclick="viewProcess('${rel.id}')">
             <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;">
               <div>
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
                   <span style="font-size:18px;">${rel.esEmplazado ? '📋' : '🔗'}</span>
-                  <span style="font-weight:600;color:var(--text);">Proceso ${idx + 1}</span>
-                  ${rel.esEmplazado ? '<span style="background:var(--amber-bg);color:var(--amber-text);padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">EMPLAZADO</span>' : '<span style="background:var(--gray-bg);color:var(--gray-text);padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">RELACIONADO</span>'}
+                  <span style="font-weight:600;color:var(--text);">${rel.nombre || 'Proceso ' + (idx + 1)}</span>
+                  ${rel.esEmplazado ? '<span style="background:var(--amber-bg);color:var(--amber-text);padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">EMPLAZADO</span>' : ''}
                 </div>
-                <div style="font-size:13px;color:var(--text-muted);">ID: ${rel.idProceso}</div>
+                <div style="font-size:13px;color:var(--text-muted);">ID: ${rel.id}</div>
               </div>
               <div style="text-align:right;font-size:12px;color:var(--text-muted);">
                 ${rel.fechaUltimaActuacion ? 'Última act: ' + new Date(rel.fechaUltimaActuacion).toLocaleDateString('es-CO') : ''}
@@ -3336,10 +3323,9 @@ function renderRelacionadosTab(proceso){
             
             <div style="background:var(--gray-bg);border-radius:8px;padding:12px;font-size:13px;">
               <div style="font-weight:500;color:var(--text);margin-bottom:8px;">🏛 ${rel.despacho || 'Despacho no especificado'}</div>
-              <div style="color:var(--text-muted);line-height:1.5;">
-                <strong>Sujetos procesales:</strong><br>
-                ${(rel.sujetosProcesales || 'No disponible').replace(/\|/g, '<br>').replace(/Demandante/g, '<strong>Demandante</strong>').replace(/Demandado/g, '<strong>Demandado</strong>').replace(/Defensor/g, '<strong>Defensor</strong>')}
-              </div>
+            </div>
+            <div style="margin-top:8px;text-align:right;">
+              <span style="color:var(--accent);font-size:13px;">Ver proceso →</span>
             </div>
           </div>
         `).join('')}
