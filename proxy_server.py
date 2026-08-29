@@ -113,38 +113,71 @@ class PublicacionesParser(HTMLParser):
 
 
 def extraer_urls_estados(html_content):
-    """Extraer URLs de las páginas de detalle de cada Estado"""
+    """Extraer URLs de las páginas de detalle de cada Estado (VER DETALLE)"""
     urls = []
     
-    # Buscar enlaces a páginas de detalle de Estados
-    # Ejemplo: /web/publicaciones-procesales/vista-de-contenido/-/publicacion/254280154
-    # O: href="/.../-/publicacion/NUMERO"
-    pattern_estado_link = r'href=["\']([^"\']*/-/publicacion/\d+[^"\']*)["\']'
-    matches = re.findall(pattern_estado_link, html_content, re.IGNORECASE)
+    # El botón "VER DETALLE" tiene URLs con este patrón:
+    # jspPage=%2FMETA-INF%2Fresources%2Fdetail.jsp&...&articleId=NUMERO
+    # o: jspPage=/META-INF/resources/detail.jsp&...&articleId=NUMERO
+    
+    # Patrón 1: Buscar URLs con detail.jsp y articleId
+    pattern_detail = r'href=["\']([^"\']*detail\.jsp[^"\']*articleId=\d+[^"\']*)["\']'
+    matches = re.findall(pattern_detail, html_content, re.IGNORECASE)
     
     for url in matches:
-        if url.startswith('/'):
-            full_url = DOCS_BASE_URL + url
+        # Decodificar URL si está encoded
+        url_decoded = urllib.parse.unquote(url)
+        
+        if url_decoded.startswith('/'):
+            full_url = DOCS_BASE_URL + url_decoded
+        elif url_decoded.startswith('http'):
+            full_url = url_decoded
         else:
-            full_url = url
+            full_url = DOCS_BASE_URL + '/' + url_decoded
         
         if full_url not in urls:
             urls.append(full_url)
-            print(f'[Estados] URL de detalle encontrada: {full_url[:80]}...')
+            print(f'[Estados] URL de detalle encontrada: {full_url[:100]}...')
     
-    # También buscar enlaces que contengan "publicaciones-procesales" y tengan números de publicación
-    pattern_alt = r'href=["\']([^"\']*publicaciones-procesales[^"\']*\d{6,}[^"\']*)["\']'
-    alt_matches = re.findall(pattern_alt, html_content, re.IGNORECASE)
+    # Patrón 2: Buscar articleId en cualquier enlace del portlet
+    pattern_article = r'href=["\']([^"\']*articleId=(\d+)[^"\']*)["\']'
+    article_matches = re.findall(pattern_article, html_content, re.IGNORECASE)
     
-    for url in alt_matches:
-        if url.startswith('/'):
-            full_url = DOCS_BASE_URL + url
-        else:
-            full_url = url
+    for url, article_id in article_matches:
+        url_decoded = urllib.parse.unquote(url)
         
-        if full_url not in urls and '/-/publicacion/' in full_url:
-            urls.append(full_url)
+        # Solo si parece ser una URL de detalle (tiene el portlet ID)
+        if 'PublicacionesEfectosProcesales' in url_decoded or 'detail' in url_decoded.lower():
+            if url_decoded.startswith('/'):
+                full_url = DOCS_BASE_URL + url_decoded
+            elif url_decoded.startswith('http'):
+                full_url = url_decoded
+            else:
+                full_url = DOCS_BASE_URL + '/web/publicaciones-procesales/inicio?' + url_decoded
+            
+            if full_url not in urls:
+                urls.append(full_url)
+                print(f'[Estados] URL de detalle (articleId={article_id}): {full_url[:80]}...')
     
+    # Patrón 3: Buscar enlaces que contengan "VER DETALLE" o similar
+    pattern_ver_detalle = r'<a[^>]*href=["\']([^"\']+)["\'][^>]*>[^<]*(?:VER DETALLE|Ver Detalle|ver detalle)[^<]*</a>'
+    ver_matches = re.findall(pattern_ver_detalle, html_content, re.IGNORECASE)
+    
+    for url in ver_matches:
+        url_decoded = urllib.parse.unquote(url)
+        
+        if url_decoded.startswith('/'):
+            full_url = DOCS_BASE_URL + url_decoded
+        elif url_decoded.startswith('http'):
+            full_url = url_decoded
+        else:
+            full_url = DOCS_BASE_URL + '/' + url_decoded
+        
+        if full_url not in urls:
+            urls.append(full_url)
+            print(f'[Estados] URL de VER DETALLE: {full_url[:80]}...')
+    
+    print(f'[Estados] Total URLs de detalle encontradas: {len(urls)}')
     return urls
 
 
@@ -152,162 +185,75 @@ def parse_detalle_estado(html_content, estado_titulo=''):
     """Parsear la página de detalle de un Estado para extraer documentos de expedientes"""
     documentos = []
     
-    # ===== BUSCAR DOCUMENTOS DE EXPEDIENTE EN LA TABLA =====
-    # Los documentos tienen formato: 
-    # - XXXXXXXXX - XX.pdf (ej: 202500338 - DG.pdf)
-    # - XXXX-XXXXX - XX.pdf (ej: 2025-00338 - DG.pdf)
+    print(f'[Detalle Estado] Parseando página de detalle ({len(html_content)} bytes)...')
     
-    # Patrón 1: Documentos con 9 dígitos seguidos (202500338 - DG.pdf)
-    pattern_doc_9digit = r'<a[^>]*href=["\']([^"\']+)["\'][^>]*>\s*(\d{9}\s*-\s*[^<]+\.pdf)\s*</a>'
-    matches = re.findall(pattern_doc_9digit, html_content, re.IGNORECASE)
+    # ===== BUSCAR EN LA TABLA "Documentos de la publicación" =====
+    # La tabla tiene columnas: Nombre del Documento | Fecha Incorporación
+    # Los documentos tienen formato: 202100169 - DG.pdf, 2021-00169 - DG.pdf, etc.
     
-    # Patrón 2: Documentos con formato XXXX-XXXXX (2025-00338 - DG.pdf)
-    pattern_doc_guion = r'<a[^>]*href=["\']([^"\']+)["\'][^>]*>\s*(\d{4}[-_]\d{5}\s*-\s*[^<]+\.pdf)\s*</a>'
-    matches += re.findall(pattern_doc_guion, html_content, re.IGNORECASE)
+    # Buscar todos los enlaces a PDFs en la página
+    # Patrón: <a href="...">XXXXXXXXX - XX.pdf</a> o similar
+    pattern_pdf_links = r'<a[^>]*href=["\']([^"\']+)["\'][^>]*>\s*([^<]*\.pdf)\s*</a>'
+    all_pdf_matches = re.findall(pattern_pdf_links, html_content, re.IGNORECASE)
     
-    # Patrón 3: Documentos con formato más flexible (cualquier número seguido de guion y texto)
-    pattern_doc_flex = r'<a[^>]*href=["\']([^"\']+\.pdf[^"\']*)["\'][^>]*>\s*(\d[\d\-_]+\s*-\s*[^<]+\.pdf)\s*</a>'
-    matches += re.findall(pattern_doc_flex, html_content, re.IGNORECASE)
+    print(f'[Detalle Estado] PDFs encontrados en página: {len(all_pdf_matches)}')
     
-    for url, nombre in matches:
-        if url.startswith('/'):
-            full_url = DOCS_BASE_URL + url
-        else:
-            full_url = url
-        
+    for url, nombre in all_pdf_matches:
         nombre_limpio = nombre.strip()
         
-        # Extraer código de expediente del nombre
-        # Puede ser: 202500338, 2025-00338, 2025_00338
+        # Verificar si es un documento de expediente (empieza con dígitos)
+        # Formatos: 202100169 - DG.pdf, 2021-00169 - DG.pdf, 202100169.pdf
         codigo_expediente = ''
         
-        # Intentar extraer 9 dígitos seguidos
-        codigo_match = re.match(r'(\d{9})', nombre_limpio)
-        if codigo_match:
-            codigo_expediente = codigo_match.group(1)
-        else:
-            # Intentar extraer formato con guión: 2025-00338 → 202500338
-            codigo_match_guion = re.match(r'(\d{4})[-_](\d{5})', nombre_limpio)
-            if codigo_match_guion:
-                codigo_expediente = codigo_match_guion.group(1) + codigo_match_guion.group(2)
+        # Patrón 1: 9 dígitos seguidos al inicio (202100169)
+        match_9dig = re.match(r'^(\d{9})', nombre_limpio)
+        if match_9dig:
+            codigo_expediente = match_9dig.group(1)
         
+        # Patrón 2: Formato con guión (2021-00169)
         if not codigo_expediente:
-            continue
+            match_guion = re.match(r'^(\d{4})[-_](\d{5})', nombre_limpio)
+            if match_guion:
+                codigo_expediente = match_guion.group(1) + match_guion.group(2)
         
-        # Buscar fecha de carga cerca del documento
-        fecha = ''
-        fecha_pattern = rf'{re.escape(nombre_limpio)}.*?(\d{{2}}-\w{{3}}-\d{{4}}\s+\d{{1,2}}:\d{{2}}:\d{{2}})'
-        fecha_match = re.search(fecha_pattern, html_content, re.IGNORECASE | re.DOTALL)
-        if fecha_match:
-            fecha = fecha_match.group(1)
-        
-        doc = {
-            'nombre': nombre_limpio,
-            'url': full_url,
-            'fecha': fecha,
-            'tipo': 'DocumentoExpediente',
-            'codigoExpediente': codigo_expediente,
-            'estadoOrigen': estado_titulo,
-            'esDocumentoExpediente': True
-        }
-        
-        if not any(d.get('url') == doc['url'] for d in documentos):
-            documentos.append(doc)
-            print(f'[Detalle Estado] Documento de expediente: {nombre_limpio} (código: {codigo_expediente})')
-    
-    # ===== BUSCAR EN TABLAS DE "Documentos de la publicación" =====
-    pattern_tabla_docs = r'Documentos?\s*(de la publicaci[oó]n|adjuntos?)?.*?<table[^>]*>(.*?)</table>'
-    tabla_match = re.search(pattern_tabla_docs, html_content, re.IGNORECASE | re.DOTALL)
-    
-    if tabla_match:
-        tabla_html = tabla_match.group(2)
-        
-        # Buscar documentos dentro de la tabla
-        pattern_fila = r'<tr[^>]*>(.*?)</tr>'
-        filas = re.findall(pattern_fila, tabla_html, re.IGNORECASE | re.DOTALL)
-        
-        for fila in filas:
-            # Buscar enlace a PDF
-            link_match = re.search(r'<a[^>]*href=["\']([^"\']+)["\'][^>]*>([^<]+)</a>', fila, re.IGNORECASE)
-            if link_match and '.pdf' in link_match.group(2).lower():
-                url = link_match.group(1)
-                nombre = link_match.group(2).strip()
-                
-                if url.startswith('/'):
-                    full_url = DOCS_BASE_URL + url
-                else:
-                    full_url = url
-                
-                # Extraer código de expediente
-                codigo_expediente = ''
-                codigo_match = re.match(r'(\d{9})', nombre)
-                if codigo_match:
-                    codigo_expediente = codigo_match.group(1)
-                else:
-                    codigo_match_guion = re.match(r'(\d{4})[-_](\d{5})', nombre)
-                    if codigo_match_guion:
-                        codigo_expediente = codigo_match_guion.group(1) + codigo_match_guion.group(2)
-                
-                if codigo_expediente:
-                    # Buscar fecha en la misma fila
-                    fecha = ''
-                    fecha_match = re.search(r'(\d{2}-\w{3}-\d{4}\s+\d{1,2}:\d{2}:\d{2})', fila, re.IGNORECASE)
-                    if fecha_match:
-                        fecha = fecha_match.group(1)
-                    
-                    doc = {
-                        'nombre': nombre,
-                        'url': full_url,
-                        'fecha': fecha,
-                        'tipo': 'DocumentoExpediente',
-                        'codigoExpediente': codigo_expediente,
-                        'estadoOrigen': estado_titulo,
-                        'esDocumentoExpediente': True
-                    }
-                    
-                    if not any(d.get('url') == doc['url'] for d in documentos):
-                        documentos.append(doc)
-                        print(f'[Detalle Estado - Tabla] Documento: {nombre} (código: {codigo_expediente})')
-    
-    # ===== BUSCAR CUALQUIER PDF CON PATRÓN DE EXPEDIENTE =====
-    # Backup: buscar cualquier referencia a documentos con formato de expediente
-    pattern_any_exp = r'href=["\']([^"\']+)["\'][^>]*>\s*((?:\d{9}|\d{4}[-_]\d{5})[^<]*\.pdf)'
-    any_matches = re.findall(pattern_any_exp, html_content, re.IGNORECASE)
-    
-    for url, nombre in any_matches:
-        if url.startswith('/'):
-            full_url = DOCS_BASE_URL + url
-        else:
-            full_url = url
-        
-        nombre_limpio = nombre.strip()
-        
-        # Extraer código
-        codigo_expediente = ''
-        codigo_match = re.match(r'(\d{9})', nombre_limpio)
-        if codigo_match:
-            codigo_expediente = codigo_match.group(1)
-        else:
-            codigo_match_guion = re.match(r'(\d{4})[-_](\d{5})', nombre_limpio)
-            if codigo_match_guion:
-                codigo_expediente = codigo_match_guion.group(1) + codigo_match_guion.group(2)
-        
+        # Patrón 3: Cualquier secuencia de dígitos al inicio que parezca código
         if not codigo_expediente:
-            continue
+            match_numeros = re.match(r'^(\d{7,9})', nombre_limpio)
+            if match_numeros:
+                codigo_expediente = match_numeros.group(1).zfill(9)  # Rellenar a 9 dígitos
         
-        doc = {
-            'nombre': nombre_limpio,
-            'url': full_url,
-            'fecha': '',
-            'tipo': 'DocumentoExpediente',
-            'codigoExpediente': codigo_expediente,
-            'estadoOrigen': estado_titulo,
-            'esDocumentoExpediente': True
-        }
-        
-        if not any(d.get('url') == doc['url'] for d in documentos):
-            documentos.append(doc)
+        # Solo procesar si encontramos un código de expediente
+        if codigo_expediente:
+            if url.startswith('/'):
+                full_url = DOCS_BASE_URL + url
+            elif url.startswith('http'):
+                full_url = url
+            else:
+                full_url = DOCS_BASE_URL + '/' + url
+            
+            # Buscar fecha cerca del documento
+            fecha = ''
+            # Buscar patrón de fecha en el HTML cercano: dd-mmm-yyyy o similar
+            fecha_pattern = rf'{re.escape(nombre_limpio)}.*?(\d{{1,2}}[-/]\w{{3}}[-/]\d{{4}}(?:\s+\d{{1,2}}:\d{{2}}(?::\d{{2}})?)?)'
+            fecha_match = re.search(fecha_pattern, html_content, re.IGNORECASE | re.DOTALL)
+            if fecha_match:
+                fecha = fecha_match.group(1)
+            
+            doc = {
+                'nombre': nombre_limpio,
+                'url': full_url,
+                'fecha': fecha,
+                'tipo': 'DocumentoExpediente',
+                'codigoExpediente': codigo_expediente,
+                'estadoOrigen': estado_titulo,
+                'esDocumentoExpediente': True
+            }
+            
+            if not any(d.get('url') == doc['url'] for d in documentos):
+                documentos.append(doc)
+                print(f'[Detalle Estado] ✓ Documento de expediente: {nombre_limpio} (código: {codigo_expediente})')
     
+    print(f'[Detalle Estado] Total documentos de expediente encontrados: {len(documentos)}')
     return documentos
 
 
