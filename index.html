@@ -1526,11 +1526,14 @@ async function consultarPublicacionesDespacho(codigoDespacho, fechaInicio, fecha
 }
 
 // Vincular documento a proceso por número de radicado
+// MODIFICADO: Ahora vincula a TODOS los procesos que coincidan (para radicados con múltiples procesos)
 function vincularDocumentoAProceso(doc){
   if(!doc || !doc.nombre) return null;
   
   // Si el documento ya tiene el código de expediente extraído por el servidor
   const codigoExpedienteDoc = doc.codigoExpediente || '';
+  
+  let procesosVinculados = [];
   
   // Buscar en cada proceso
   for(let i = 0; i < procesos.length; i++){
@@ -1540,7 +1543,7 @@ function vincularDocumentoAProceso(doc){
     // Normalizar el radicado del proceso (quitar guiones)
     const radicadoLimpio = p.radicado.replace(/[-\s]/g, '');
     
-    // NUEVO: Extraer código de expediente de los últimos 11 dígitos, quitando los 2 últimos
+    // Extraer código de expediente de los últimos 11 dígitos, quitando los 2 últimos
     // Ejemplo: 11001311002720250033800
     //          Últimos 11: 20250033800
     //          Sin últimos 2: 202500338 ← Este es el código
@@ -1603,7 +1606,7 @@ function vincularDocumentoAProceso(doc){
       if(!p.documentosPublicaciones) p.documentosPublicaciones = [];
       
       const yaExiste = p.documentosPublicaciones.some(d => d.url === doc.url || d.nombre === doc.nombre);
-      if(yaExiste) return null;
+      if(yaExiste) continue; // Continuar buscando otros procesos, no retornar
       
       // Determinar tipo de documento
       let tipoDoc = 'Documento';
@@ -1625,11 +1628,13 @@ function vincularDocumentoAProceso(doc){
       });
       
       console.log(`📎 Documento vinculado: ${doc.nombre} → ${p.radicado} (código: ${codigoExpediente}, tipo: ${tipoDoc})`);
-      return p;
+      procesosVinculados.push(p);
+      // NO hacer return aquí - continuar para vincular a otros procesos con mismo radicado
     }
   }
   
-  return null;
+  // Retornar el primer proceso vinculado (para compatibilidad con código existente)
+  return procesosVinculados.length > 0 ? procesosVinculados[0] : null;
 }
 
 // Mostrar notificación en el dashboard
