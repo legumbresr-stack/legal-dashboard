@@ -1,4 +1,4 @@
-<!-- Build: 1787666200-AUTH-FIX -->
+<!-- Build: 2026-08-26-CLEAN -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -9,6 +9,28 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
+  /* Auth Screens */
+  .auth-screen{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;}
+  .auth-screen.hidden{display:none !important;}
+  .login-screen{background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);}
+  .pending-screen{background:#f8fafc;}
+  .auth-card{background:#fff;border-radius:16px;padding:48px 40px;width:100%;max-width:420px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);text-align:center;}
+  .auth-logo{width:80px;height:80px;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;font-size:36px;color:#fff;}
+  .auth-title{font-size:28px;font-weight:700;margin:0 0 8px;color:#18181b;}
+  .auth-subtitle{font-size:15px;color:#71717a;margin:0 0 32px;}
+  .google-btn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:14px 24px;border:1px solid #e4e4e7;border-radius:10px;background:#fff;font-size:15px;font-weight:500;color:#18181b;cursor:pointer;transition:all 0.2s;}
+  .google-btn:hover{background:#f8f9fa;border-color:#d1d5db;box-shadow:0 4px 12px rgba(0,0,0,0.1);}
+  .google-btn img{width:20px;height:20px;}
+  .pending-icon{width:80px;height:80px;background:#fef9ec;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;font-size:40px;}
+  .pending-email{display:inline-block;padding:8px 16px;background:#f4f4f5;border-radius:8px;font-size:14px;margin-bottom:24px;}
+  .pending-actions{display:flex;gap:12px;justify-content:center;}
+  .btn-secondary{padding:12px 24px;border:1px solid #e4e4e7;border-radius:8px;background:#fff;font-size:14px;font-weight:500;cursor:pointer;}
+  .btn-secondary:hover{background:#f5f5f5;}
+  .app.auth-hidden{display:none !important;}
+  .logout-btn{display:flex;align-items:center;gap:8px;padding:8px 12px;margin-top:8px;border:1px solid #e4e4e7;border-radius:8px;background:#fff;font-size:13px;color:#71717a;cursor:pointer;width:100%;}
+  .logout-btn:hover{background:#fef2f2;color:#dc2626;border-color:#fecaca;}
+  .nav-admin{display:none;}
+  .nav-admin.visible{display:flex;}
   :root{
     --bg:#ffffff;
     --sidebar-bg:#fafafa;
@@ -24,32 +46,6 @@
   }
   *{box-sizing:border-box;}
   body{margin:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;-webkit-font-smoothing:antialiased;}
-  
-  /* Auth Screens */
-  .auth-screen{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;}
-  .auth-screen.hidden{display:none !important;}
-  .login-screen{background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);}
-  .pending-screen{background:#f8fafc;}
-  .auth-card{background:#fff;border-radius:16px;padding:48px 40px;width:100%;max-width:420px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);text-align:center;}
-  .auth-logo{width:80px;height:80px;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;font-size:36px;color:#fff;}
-  .auth-title{font-size:28px;font-weight:700;margin:0 0 8px;color:var(--text);}
-  .auth-subtitle{font-size:15px;color:var(--text-muted);margin:0 0 32px;}
-  .google-btn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:14px 24px;border:1px solid var(--border);border-radius:10px;background:#fff;font-size:15px;font-weight:500;color:var(--text);cursor:pointer;transition:all 0.2s;}
-  .google-btn:hover{background:#f8f9fa;border-color:#d1d5db;box-shadow:0 4px 12px rgba(0,0,0,0.1);}
-  .google-btn img{width:20px;height:20px;}
-  .pending-icon{width:80px;height:80px;background:var(--amber-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;font-size:40px;}
-  .pending-email{display:inline-block;padding:8px 16px;background:var(--gray-bg);border-radius:8px;font-size:14px;margin-bottom:24px;}
-  .pending-actions{display:flex;gap:12px;justify-content:center;}
-  .btn-secondary{padding:12px 24px;border:1px solid var(--border);border-radius:8px;background:#fff;font-size:14px;font-weight:500;cursor:pointer;}
-  .btn-secondary:hover{background:#f5f5f5;}
-  .app.auth-hidden{display:none !important;}
-  .logout-btn{display:flex;align-items:center;gap:8px;padding:8px 12px;margin-top:8px;border:1px solid var(--border);border-radius:8px;background:#fff;font-size:13px;color:var(--text-muted);cursor:pointer;width:100%;}
-  .logout-btn:hover{background:#fef2f2;color:#dc2626;border-color:#fecaca;}
-  .user-avatar-img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
-  .user-role-badge{font-size:10px;color:var(--accent);font-weight:600;}
-  .nav-admin{display:none;}
-  .nav-admin.visible{display:flex;}
-  
   .app{display:flex;min-height:100vh;}
 
   /* Sidebar */
@@ -1213,7 +1209,6 @@
         <div>
           <div class="user-name" id="userName">Usuario</div>
           <div class="user-email" id="userEmail">usuario@email.com</div>
-          <div class="user-role-badge" id="userRole"></div>
         </div>
         <span style="margin-left:auto;color:var(--text-muted);cursor:pointer;">⌃</span>
       </div>
@@ -7663,64 +7658,23 @@ document.getElementById('modalSave').addEventListener('click', ()=>{
 });
 
 // ============================================
-// AUTH - Supabase Google OAuth (MINIMAL)
+// AUTH - Supabase Google OAuth
 // ============================================
 const SUPABASE_URL = 'https://wwpupchudqdfvlgeqkjn.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3cHVwY2h1ZHFkZnZsZ2Vxa2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc5NzA4NzcsImV4cCI6MjEwMzU0Njg3N30.okMhP5FZqkHq_T-b9QzjOq-zYZZd79TIHRj-ombQQYU';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentUser = null;
 let currentProfile = null;
 
-// Elementos DOM de auth
-const loginScreen = document.getElementById('loginScreen');
-const pendingScreen = document.getElementById('pendingScreen');
-const pendingEmail = document.getElementById('pendingEmail');
-const appContainer = document.querySelector('.app');
-
-// Mostrar pantalla de login
-function showLoginScreen() {
-  loginScreen.classList.remove('hidden');
-  pendingScreen.classList.add('hidden');
-  appContainer.classList.add('auth-hidden');
-}
-
-// Mostrar pantalla de pending
-function showPendingScreen(email) {
-  loginScreen.classList.add('hidden');
-  pendingScreen.classList.remove('hidden');
-  pendingEmail.textContent = email;
-  appContainer.classList.add('auth-hidden');
-}
-
-// Mostrar app principal
-function showApp() {
-  loginScreen.classList.add('hidden');
-  pendingScreen.classList.add('hidden');
-  appContainer.classList.remove('auth-hidden');
-}
-
-// Cargar perfil del usuario desde Supabase
 async function loadUserProfile(userId) {
   try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-    
-    if (error) {
-      console.log('No profile found, creating...');
-      return null;
-    }
+    const { data, error } = await supabaseClient.from('profiles').select('*').eq('id', userId).single();
+    if (error) return null;
     return data;
-  } catch (e) {
-    console.error('Error loading profile:', e);
-    return null;
-  }
+  } catch (e) { return null; }
 }
 
-// Crear perfil para usuario nuevo
 async function createUserProfile(user) {
   try {
     const profileData = {
@@ -7731,125 +7685,82 @@ async function createUserProfile(user) {
       role: 'pending',
       created_at: new Date().toISOString()
     };
-    
-    const { data, error } = await supabase
-      .from('profiles')
-      .insert([profileData])
-      .select()
-      .single();
-    
-    if (error) {
-      console.error('Error creating profile:', error);
-      return null;
-    }
+    const { data, error } = await supabaseClient.from('profiles').insert([profileData]).select().single();
+    if (error) return null;
     return data;
-  } catch (e) {
-    console.error('Error:', e);
-    return null;
-  }
+  } catch (e) { return null; }
 }
 
-// Actualizar UI con datos del usuario
 function updateUserUI(profile) {
   if (!profile) return;
-  
   const userName = document.getElementById('userName');
   const userEmail = document.getElementById('userEmail');
   const userAvatar = document.getElementById('userAvatar');
-  const userRole = document.getElementById('userRole');
   const navAdmin = document.getElementById('navAdmin');
-  
   if (userName) userName.textContent = profile.full_name || 'Usuario';
   if (userEmail) userEmail.textContent = profile.email || '';
-  if (userRole) userRole.textContent = profile.role === 'admin' ? 'ADMIN' : '';
-  
-  // Avatar con imagen o inicial
   if (userAvatar) {
     if (profile.avatar_url) {
-      userAvatar.innerHTML = `<img src="${profile.avatar_url}" class="user-avatar-img" alt="">`;
+      userAvatar.innerHTML = '<img src="'+profile.avatar_url+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">';
     } else {
       userAvatar.textContent = (profile.full_name || 'U')[0].toUpperCase();
     }
   }
-  
-  // Mostrar/ocultar nav admin
   if (navAdmin) {
-    if (profile.role === 'admin') {
-      navAdmin.classList.add('visible');
-    } else {
-      navAdmin.classList.remove('visible');
-    }
+    navAdmin.classList.toggle('visible', profile.role === 'admin');
   }
 }
 
-// FUNCIÓN PRINCIPAL: Verificar sesión al cargar
+function showLoginScreen() {
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('pendingScreen').classList.add('hidden');
+  document.querySelector('.app').classList.add('auth-hidden');
+}
+
+function showPendingScreen(email) {
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('pendingScreen').classList.remove('hidden');
+  document.getElementById('pendingEmail').textContent = email;
+  document.querySelector('.app').classList.add('auth-hidden');
+}
+
+function showApp() {
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('pendingScreen').classList.add('hidden');
+  document.querySelector('.app').classList.remove('auth-hidden');
+}
+
 async function checkSession() {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
-      showLoginScreen();
-      return;
-    }
-    
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) { showLoginScreen(); return; }
     currentUser = session.user;
-    
-    // Cargar o crear perfil
     let profile = await loadUserProfile(currentUser.id);
-    if (!profile) {
-      profile = await createUserProfile(currentUser);
-    }
-    
+    if (!profile) profile = await createUserProfile(currentUser);
     currentProfile = profile;
-    
-    // Verificar estado del usuario
-    if (!profile || profile.role === 'pending') {
-      showPendingScreen(currentUser.email);
-      return;
-    }
-    
-    // Usuario aprobado - mostrar app
+    if (!profile || profile.role === 'pending') { showPendingScreen(currentUser.email); return; }
     updateUserUI(profile);
     showApp();
-    loadData(); // <-- Llamar a loadData() SOLO después de autenticación exitosa
-    
-  } catch (error) {
-    console.error('Error checking session:', error);
-    showLoginScreen();
-  }
+    loadData();
+  } catch (error) { showLoginScreen(); }
 }
 
-// Login con Google
 async function signInWithGoogle() {
   try {
-    const { error } = await supabase.auth.signInWithOAuth({
+    await supabaseClient.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: window.location.origin + window.location.pathname
-      }
+      options: { redirectTo: window.location.origin + window.location.pathname }
     });
-    if (error) {
-      console.error('Error signing in:', error);
-      alert('Error al iniciar sesión: ' + error.message);
-    }
-  } catch (e) {
-    console.error('Error:', e);
-  }
+  } catch (e) { alert('Error al iniciar sesión'); }
 }
 
-// Cerrar sesión
 async function signOut() {
-  try {
-    await supabase.auth.signOut();
-    currentUser = null;
-    currentProfile = null;
-    showLoginScreen();
-  } catch (e) {
-    console.error('Error signing out:', e);
-  }
+  await supabaseClient.auth.signOut();
+  currentUser = null;
+  currentProfile = null;
+  showLoginScreen();
 }
 
-// Verificar estado (para pending)
 async function checkStatus() {
   if (!currentUser) return;
   const profile = await loadUserProfile(currentUser.id);
@@ -7863,135 +7774,49 @@ async function checkStatus() {
   }
 }
 
-// Escuchar cambios de auth
-supabase.auth.onAuthStateChange((event, session) => {
-  console.log('Auth event:', event);
-  if (event === 'SIGNED_IN' && session) {
-    checkSession();
-  } else if (event === 'SIGNED_OUT') {
-    showLoginScreen();
-  }
+supabaseClient.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_IN' && session) checkSession();
+  else if (event === 'SIGNED_OUT') showLoginScreen();
 });
 
-// Event listeners de auth
 document.getElementById('googleLoginBtn').addEventListener('click', signInWithGoogle);
 document.getElementById('logoutBtn').addEventListener('click', signOut);
 document.getElementById('logoutPendingBtn').addEventListener('click', signOut);
 document.getElementById('checkStatusBtn').addEventListener('click', checkStatus);
 
-// Vista de administración
 function renderAdmin() {
-  document.getElementById('content').innerHTML = `
-    <h1 class="page-title">Administración de usuarios</h1>
-    <p class="page-sub">Gestiona los usuarios del sistema</p>
-    <div class="panel">
-      <div class="panel-head">
-        <span class="panel-title">Usuarios pendientes</span>
-        <span class="panel-link" onclick="loadAdminUsers()">🔄 Actualizar</span>
-      </div>
-      <div id="pendingUsers" style="margin-top:16px;">Cargando...</div>
-    </div>
-    <div class="panel">
-      <div class="panel-head">
-        <span class="panel-title">Usuarios activos</span>
-      </div>
-      <div id="activeUsers" style="margin-top:16px;">Cargando...</div>
-    </div>
-  `;
+  document.getElementById('content').innerHTML = '<h1 class="page-title">Administración</h1><p class="page-sub">Gestiona usuarios</p><div class="panel"><div class="panel-head"><span class="panel-title">Usuarios pendientes</span><span class="panel-link" onclick="loadAdminUsers()">🔄</span></div><div id="pendingUsers">Cargando...</div></div><div class="panel"><div class="panel-head"><span class="panel-title">Usuarios activos</span></div><div id="activeUsers">Cargando...</div></div>';
   loadAdminUsers();
 }
 
 async function loadAdminUsers() {
   try {
-    const { data: users, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    
+    const { data: users } = await supabaseClient.from('profiles').select('*').order('created_at', { ascending: false });
     const pending = users.filter(u => u.role === 'pending');
     const active = users.filter(u => u.role !== 'pending');
-    
-    document.getElementById('pendingUsers').innerHTML = pending.length === 0 
-      ? '<p style="color:var(--text-muted);">No hay usuarios pendientes</p>'
-      : pending.map(u => `
-        <div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;">
-          <div style="width:40px;height:40px;border-radius:50%;background:var(--amber-bg);display:flex;align-items:center;justify-content:center;">
-            ${u.avatar_url ? `<img src="${u.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : '⏳'}
-          </div>
-          <div style="flex:1;">
-            <div style="font-weight:500;">${u.full_name || 'Sin nombre'}</div>
-            <div style="font-size:13px;color:var(--text-muted);">${u.email}</div>
-          </div>
-          <button class="btn" onclick="approveUser('${u.id}')" style="background:var(--green-bg);color:var(--green-text);">✓ Aprobar</button>
-          <button class="btn" onclick="rejectUser('${u.id}')" style="background:var(--red-bg);color:var(--red-text);">✕ Rechazar</button>
-        </div>
-      `).join('');
-    
-    document.getElementById('activeUsers').innerHTML = active.length === 0
-      ? '<p style="color:var(--text-muted);">No hay usuarios activos</p>'
-      : active.map(u => `
-        <div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;">
-          <div style="width:40px;height:40px;border-radius:50%;background:var(--gray-bg);display:flex;align-items:center;justify-content:center;">
-            ${u.avatar_url ? `<img src="${u.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : u.full_name?.[0] || '?'}
-          </div>
-          <div style="flex:1;">
-            <div style="font-weight:500;">${u.full_name || 'Sin nombre'}</div>
-            <div style="font-size:13px;color:var(--text-muted);">${u.email}</div>
-          </div>
-          <span style="padding:4px 12px;border-radius:12px;font-size:12px;font-weight:500;background:${u.role==='admin'?'var(--accent-soft)':'var(--green-bg)'};color:${u.role==='admin'?'var(--accent)':'var(--green-text)'};">${u.role}</span>
-        </div>
-      `).join('');
-  } catch (e) {
-    console.error('Error loading users:', e);
-    document.getElementById('pendingUsers').innerHTML = '<p style="color:var(--red-text);">Error cargando usuarios</p>';
-  }
+    document.getElementById('pendingUsers').innerHTML = pending.length === 0 ? '<p style="color:var(--text-muted);">No hay pendientes</p>' : pending.map(u => '<div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;"><div style="flex:1;"><b>'+u.full_name+'</b><br><small>'+u.email+'</small></div><button class="btn" onclick="approveUser(\''+u.id+'\')" style="background:var(--green-bg);color:var(--green-text);">✓</button><button class="btn" onclick="rejectUser(\''+u.id+'\')" style="background:var(--red-bg);color:var(--red-text);">✕</button></div>').join('');
+    document.getElementById('activeUsers').innerHTML = active.length === 0 ? '<p style="color:var(--text-muted);">No hay activos</p>' : active.map(u => '<div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;"><div style="flex:1;"><b>'+u.full_name+'</b><br><small>'+u.email+'</small></div><span style="padding:4px 12px;border-radius:12px;font-size:12px;background:'+(u.role==='admin'?'var(--accent-soft)':'var(--green-bg)')+';">'+u.role+'</span></div>').join('');
+  } catch (e) { console.error(e); }
 }
 
 async function approveUser(userId) {
-  try {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ role: 'abogado' })
-      .eq('id', userId);
-    
-    if (error) throw error;
-    loadAdminUsers();
-  } catch (e) {
-    console.error('Error approving user:', e);
-    alert('Error al aprobar usuario');
-  }
+  await supabaseClient.from('profiles').update({ role: 'abogado' }).eq('id', userId);
+  loadAdminUsers();
 }
 
 async function rejectUser(userId) {
-  if (!confirm('¿Eliminar este usuario?')) return;
-  try {
-    const { error } = await supabase
-      .from('profiles')
-      .delete()
-      .eq('id', userId);
-    
-    if (error) throw error;
-    loadAdminUsers();
-  } catch (e) {
-    console.error('Error rejecting user:', e);
-    alert('Error al rechazar usuario');
-  }
+  if (!confirm('¿Eliminar usuario?')) return;
+  await supabaseClient.from('profiles').delete().eq('id', userId);
+  loadAdminUsers();
 }
 
-// Extender el render original para incluir admin
 const originalRender = render;
 render = function() {
-  if (currentView === 'admin') {
-    renderAdmin();
-    return;
-  }
+  if (currentView === 'admin') { renderAdmin(); return; }
   originalRender();
 };
 
-// INICIAR: Verificar sesión (esto reemplaza loadData() directo)
 checkSession();
 </script>
 </body>
-</html>// Updated Tue Aug 25 12:25:47 PM UTC 2026
+</html>
