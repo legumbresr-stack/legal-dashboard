@@ -2208,7 +2208,7 @@ async function consultarRadicados(radicadosList){
   // Check for duplicates (already in procesos array)
   consultedProcesses.forEach(cp => {
     if(cp.status === 'listo'){
-      const exists = procesos.find(p => p.radicado === cp.radicado && p.id === cp.id);
+      const exists = procesos.find(p => p.radicado === cp.radicado && String(p.id) === String(cp.id));
       if(exists){
         cp.status = 'duplicado';
         selectedProcessIds.delete(cp.id);
@@ -7601,7 +7601,7 @@ function setupDynamicTable(){
         : `¿Estás seguro de eliminar ${checkedIds.length} procesos?`;
       
       if(confirm(confirmMsg)){
-        procesos = procesos.filter(p => !checkedIds.includes(p.id));
+        procesos = procesos.filter(p => !checkedIds.includes(String(p.id)));
         saveProcesos();
         render();
       }
