@@ -1,0 +1,1191 @@
+<!-- Build: Auth-v1.0 - MiRadicado con Google OAuth -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>MiRadicado - Seguimiento de Procesos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Supabase JS Client -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#ffffff;
+    --sidebar-bg:#fafafa;
+    --border:#e4e4e7;
+    --text:#18181b;
+    --text-muted:#71717a;
+    --accent:#2563eb;
+    --accent-soft:#eff6ff;
+    --green-bg:#ecfdf3; --green-text:#15803d;
+    --amber-bg:#fef9ec; --amber-text:#b45309;
+    --red-bg:#fef2f2; --red-text:#dc2626;
+    --gray-bg:#f4f4f5; --gray-text:#52525b;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;-webkit-font-smoothing:antialiased;}
+  
+  /* ========== LOGIN SCREEN ========== */
+  .login-screen{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+  .login-card{
+    background:#fff;
+    border-radius:16px;
+    padding:48px 40px;
+    width:100%;
+    max-width:420px;
+    box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);
+    text-align:center;
+  }
+  .login-logo{
+    width:80px;
+    height:80px;
+    background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius:20px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin:0 auto 24px;
+    font-size:36px;
+    color:#fff;
+  }
+  .login-title{
+    font-size:28px;
+    font-weight:700;
+    margin:0 0 8px;
+    color:var(--text);
+  }
+  .login-subtitle{
+    font-size:15px;
+    color:var(--text-muted);
+    margin:0 0 32px;
+  }
+  .google-btn{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:12px;
+    width:100%;
+    padding:14px 24px;
+    border:1px solid var(--border);
+    border-radius:10px;
+    background:#fff;
+    font-size:15px;
+    font-weight:500;
+    color:var(--text);
+    cursor:pointer;
+    transition:all 0.2s;
+  }
+  .google-btn:hover{
+    background:#f8f9fa;
+    border-color:#d1d5db;
+    box-shadow:0 4px 12px rgba(0,0,0,0.1);
+  }
+  .google-btn img{
+    width:20px;
+    height:20px;
+  }
+  .login-footer{
+    margin-top:32px;
+    font-size:12px;
+    color:var(--text-muted);
+  }
+  .login-footer a{
+    color:var(--accent);
+    text-decoration:none;
+  }
+  
+  /* ========== PENDING APPROVAL SCREEN ========== */
+  .pending-screen{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#f8fafc;
+  }
+  .pending-card{
+    background:#fff;
+    border-radius:16px;
+    padding:48px 40px;
+    width:100%;
+    max-width:480px;
+    box-shadow:0 4px 24px rgba(0,0,0,0.08);
+    text-align:center;
+  }
+  .pending-icon{
+    width:80px;
+    height:80px;
+    background:var(--amber-bg);
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin:0 auto 24px;
+    font-size:40px;
+  }
+  .pending-title{
+    font-size:24px;
+    font-weight:700;
+    margin:0 0 12px;
+    color:var(--text);
+  }
+  .pending-message{
+    font-size:15px;
+    color:var(--text-muted);
+    margin:0 0 24px;
+    line-height:1.6;
+  }
+  .pending-email{
+    display:inline-block;
+    padding:8px 16px;
+    background:var(--gray-bg);
+    border-radius:8px;
+    font-size:14px;
+    color:var(--text);
+    margin-bottom:24px;
+  }
+  .pending-actions{
+    display:flex;
+    gap:12px;
+    justify-content:center;
+  }
+  .btn-secondary{
+    padding:12px 24px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    background:#fff;
+    font-size:14px;
+    font-weight:500;
+    color:var(--text);
+    cursor:pointer;
+    transition:all 0.2s;
+  }
+  .btn-secondary:hover{
+    background:#f5f5f5;
+  }
+  
+  /* ========== MAIN APP ========== */
+  .app{display:flex;min-height:100vh;}
+  .app.hidden{display:none;}
+
+  /* Sidebar */
+  .sidebar{width:250px;flex-shrink:0;background:#ffffff;border-right:1px solid var(--border);
+    display:flex;flex-direction:column;padding:16px 12px;}
+  .brand{display:flex;align-items:center;gap:10px;padding:8px 6px 16px;border-bottom:1px solid var(--border);margin-bottom:12px;}
+  .brand-avatar{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:#fff;display:flex;
+    align-items:center;justify-content:center;font-weight:600;font-size:15px;flex-shrink:0;}
+  .brand-name{font-size:14px;font-weight:600;line-height:1.2;color:#1a1a1a;}
+  .brand-sub{font-size:12px;color:var(--text-muted);}
+  nav{display:flex;flex-direction:column;gap:2px;}
+  .nav-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;font-size:14px;
+    color:#4b5563;cursor:pointer;border:none;background:none;text-align:left;width:100%;font-weight:500;
+    letter-spacing:-0.01em;transition:background 0.15s;}
+  .nav-item:hover{background:#f5f5f5;}
+  .nav-item.active{background:#f5f5f5;color:#1a1a1a;font-weight:600;}
+  .nav-icon{width:20px;text-align:center;font-size:16px;flex-shrink:0;}
+  .nav-item.admin-only{border-top:1px solid var(--border);margin-top:8px;padding-top:18px;}
+  .sidebar-footer{margin-top:auto;padding-top:12px;border-top:1px solid var(--border);}
+  .user-row{display:flex;align-items:center;gap:10px;padding:8px 6px;}
+  .user-avatar{width:32px;height:32px;border-radius:50%;background:#e5e7eb;color:#4b5563;display:flex;
+    align-items:center;justify-content:center;font-weight:600;font-size:13px;flex-shrink:0;overflow:hidden;}
+  .user-avatar img{width:100%;height:100%;object-fit:cover;}
+  .user-info{flex:1;min-width:0;}
+  .user-name{font-size:14px;font-weight:500;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .user-email{font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .user-role{font-size:10px;color:var(--accent);font-weight:600;text-transform:uppercase;}
+  .logout-btn{
+    display:flex;align-items:center;gap:8px;padding:8px 12px;margin-top:8px;
+    border:1px solid var(--border);border-radius:8px;background:#fff;
+    font-size:13px;color:var(--text-muted);cursor:pointer;width:100%;
+  }
+  .logout-btn:hover{background:#fef2f2;color:var(--red-text);border-color:#fecaca;}
+
+  /* Main */
+  .main{flex:1;display:flex;flex-direction:column;min-width:0;}
+  .topbar{height:52px;border-bottom:1px solid var(--border);display:flex;align-items:center;
+    padding:0 24px;font-size:14px;font-weight:600;gap:10px;}
+  .content{padding:24px 28px 60px;max-width:1200px;flex:1;overflow:auto;}
+  
+  h1.page-title{font-size:22px;font-weight:600;margin:0 0 4px;letter-spacing:-0.02em;}
+  .page-sub{color:var(--text-muted);font-size:14px;margin:0 0 22px;}
+
+  /* ========== ADMIN PANEL STYLES ========== */
+  .admin-section{margin-bottom:32px;}
+  .admin-section-title{font-size:16px;font-weight:600;margin:0 0 16px;display:flex;align-items:center;gap:8px;}
+  .admin-section-title .count{
+    background:var(--amber-bg);
+    color:var(--amber-text);
+    padding:2px 8px;
+    border-radius:10px;
+    font-size:12px;
+  }
+  
+  .users-table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+  .users-table th{text-align:left;font-size:12px;font-weight:600;color:var(--text-muted);padding:12px 16px;border-bottom:1px solid var(--border);background:#fafafa;}
+  .users-table td{padding:14px 16px;border-bottom:1px solid var(--border);font-size:13px;}
+  .users-table tr:last-child td{border-bottom:none;}
+  .users-table tr:hover{background:#f8fafc;}
+  
+  .user-cell{display:flex;align-items:center;gap:12px;}
+  .user-cell-avatar{width:36px;height:36px;border-radius:50%;background:#e5e7eb;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+  .user-cell-avatar img{width:100%;height:100%;object-fit:cover;}
+  .user-cell-info{flex:1;}
+  .user-cell-name{font-weight:500;color:var(--text);}
+  .user-cell-email{font-size:12px;color:var(--text-muted);}
+  
+  .status-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;}
+  .status-badge.pending{background:var(--amber-bg);color:var(--amber-text);}
+  .status-badge.approved{background:var(--green-bg);color:var(--green-text);}
+  .status-badge.admin{background:var(--accent-soft);color:var(--accent);}
+  
+  .action-btns{display:flex;gap:8px;}
+  .btn-approve{
+    padding:6px 14px;border:none;border-radius:6px;
+    background:var(--green-bg);color:var(--green-text);
+    font-size:12px;font-weight:500;cursor:pointer;
+  }
+  .btn-approve:hover{background:#bbf7d0;}
+  .btn-reject{
+    padding:6px 14px;border:none;border-radius:6px;
+    background:var(--red-bg);color:var(--red-text);
+    font-size:12px;font-weight:500;cursor:pointer;
+  }
+  .btn-reject:hover{background:#fecaca;}
+  .btn-make-admin{
+    padding:6px 14px;border:1px solid var(--accent);border-radius:6px;
+    background:#fff;color:var(--accent);
+    font-size:12px;font-weight:500;cursor:pointer;
+  }
+  .btn-make-admin:hover{background:var(--accent-soft);}
+  
+  .empty-state{
+    text-align:center;padding:48px 24px;color:var(--text-muted);
+  }
+  .empty-state-icon{font-size:48px;margin-bottom:12px;opacity:0.5;}
+  .empty-state-title{font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px;}
+  .empty-state-desc{font-size:14px;color:var(--text-muted);}
+
+  /* Stats cards */
+  .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+  .stat-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px;}
+  .stat-card-label{font-size:13px;color:var(--text-muted);margin-bottom:8px;}
+  .stat-card-value{font-size:28px;font-weight:600;color:var(--text);}
+  .stat-card-sub{font-size:12px;color:var(--text-muted);margin-top:4px;}
+
+  /* Buttons */
+  .btn{border:1px solid var(--border);background:#fff;border-radius:8px;padding:8px 14px;font-size:13px;
+    font-weight:600;cursor:pointer;color:var(--text);}
+  .btn:hover{background:#f7f7f8;}
+  .btn-primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .btn-primary:hover{background:#1d4ed8;}
+
+  /* Loading */
+  .loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px;color:var(--text-muted);}
+  .spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;margin-bottom:16px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* Toast notifications */
+  .toast-container{position:fixed;top:20px;right:20px;z-index:1000;display:flex;flex-direction:column;gap:10px;}
+  .toast{
+    padding:14px 20px;border-radius:10px;background:#fff;
+    box-shadow:0 4px 20px rgba(0,0,0,0.15);
+    display:flex;align-items:center;gap:12px;
+    animation:slideIn 0.3s ease;
+    max-width:360px;
+  }
+  .toast.success{border-left:4px solid var(--green-text);}
+  .toast.error{border-left:4px solid var(--red-text);}
+  .toast.info{border-left:4px solid var(--accent);}
+  .toast-icon{font-size:20px;}
+  .toast-message{font-size:14px;color:var(--text);}
+  @keyframes slideIn{from{transform:translateX(100%);opacity:0;}to{transform:translateX(0);opacity:1;}}
+
+  /* Hidden utility */
+  .hidden{display:none !important;}
+</style>
+</head>
+<body>
+
+<!-- ========== LOGIN SCREEN ========== -->
+<div id="loginScreen" class="login-screen">
+  <div class="login-card">
+    <div class="login-logo">⚖️</div>
+    <h1 class="login-title">MiRadicado</h1>
+    <p class="login-subtitle">Seguimiento inteligente de procesos judiciales</p>
+    
+    <button class="google-btn" onclick="signInWithGoogle()">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+      Continuar con Google
+    </button>
+    
+    <div class="login-footer">
+      Al continuar, aceptas los <a href="#">términos de servicio</a>
+    </div>
+  </div>
+</div>
+
+<!-- ========== PENDING APPROVAL SCREEN ========== -->
+<div id="pendingScreen" class="pending-screen hidden">
+  <div class="pending-card">
+    <div class="pending-icon">⏳</div>
+    <h1 class="pending-title">Cuenta pendiente de aprobación</h1>
+    <p class="pending-message">
+      Tu cuenta ha sido registrada exitosamente. Un administrador revisará y aprobará tu acceso pronto.
+    </p>
+    <div class="pending-email" id="pendingEmail">correo@ejemplo.com</div>
+    <div class="pending-actions">
+      <button class="btn-secondary" onclick="checkApprovalStatus()">🔄 Verificar estado</button>
+      <button class="btn-secondary" onclick="signOut()">Cerrar sesión</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== MAIN APP ========== -->
+<div id="mainApp" class="app hidden">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-avatar">⚖️</div>
+      <div>
+        <div class="brand-name">MiRadicado</div>
+        <div class="brand-sub">Procesos Judiciales</div>
+      </div>
+    </div>
+    
+    <nav>
+      <button class="nav-item active" data-view="dashboard" onclick="showView('dashboard')">
+        <span class="nav-icon">📊</span> Dashboard
+      </button>
+      <button class="nav-item" data-view="procesos" onclick="showView('procesos')">
+        <span class="nav-icon">📁</span> Mis Procesos
+      </button>
+      <button class="nav-item" data-view="calendario" onclick="showView('calendario')">
+        <span class="nav-icon">📅</span> Calendario
+      </button>
+      <button class="nav-item" data-view="publicaciones" onclick="showView('publicaciones')">
+        <span class="nav-icon">📰</span> Publicaciones
+      </button>
+      
+      <!-- Admin only -->
+      <button class="nav-item admin-only hidden" id="adminNav" data-view="admin" onclick="showView('admin')">
+        <span class="nav-icon">👥</span> Administrar Usuarios
+      </button>
+    </nav>
+    
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <div class="user-avatar" id="userAvatar">
+          <span id="userInitials">U</span>
+        </div>
+        <div class="user-info">
+          <div class="user-name" id="userName">Usuario</div>
+          <div class="user-email" id="userEmailSidebar">correo@ejemplo.com</div>
+          <div class="user-role hidden" id="userRole">ADMIN</div>
+        </div>
+      </div>
+      <button class="logout-btn" onclick="signOut()">
+        <span>🚪</span> Cerrar sesión
+      </button>
+    </div>
+  </aside>
+  
+  <!-- Main Content -->
+  <main class="main">
+    <div class="topbar">
+      <span id="topbarTitle">📊 Dashboard</span>
+    </div>
+    
+    <div class="content">
+      <!-- Dashboard View -->
+      <div id="dashboardView" class="view">
+        <h1 class="page-title">Bienvenido, <span id="welcomeName">Usuario</span></h1>
+        <p class="page-sub">Resumen de tus procesos judiciales</p>
+        
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-card-label">📁 Total Procesos</div>
+            <div class="stat-card-value" id="statTotal">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-label">✅ Activos</div>
+            <div class="stat-card-value" id="statActivos">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-label">📅 Próximas audiencias</div>
+            <div class="stat-card-value" id="statAudiencias">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-label">📰 Notificaciones hoy</div>
+            <div class="stat-card-value" id="statNotificaciones">0</div>
+          </div>
+        </div>
+        
+        <div class="empty-state" id="emptyDashboard">
+          <div class="empty-state-icon">📁</div>
+          <div class="empty-state-title">No tienes procesos registrados</div>
+          <div class="empty-state-desc">Agrega tu primer proceso para comenzar el seguimiento</div>
+          <button class="btn btn-primary" style="margin-top:16px" onclick="showView('procesos')">+ Agregar proceso</button>
+        </div>
+      </div>
+      
+      <!-- Procesos View -->
+      <div id="procesosView" class="view hidden">
+        <h1 class="page-title">Mis Procesos</h1>
+        <p class="page-sub">Gestiona y da seguimiento a tus procesos judiciales</p>
+        
+        <div style="margin-bottom:20px">
+          <button class="btn btn-primary" onclick="openAddProcesoModal()">+ Agregar proceso</button>
+        </div>
+        
+        <div id="procesosContent">
+          <div class="loading">
+            <div class="spinner"></div>
+            <span>Cargando procesos...</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Calendario View -->
+      <div id="calendarioView" class="view hidden">
+        <h1 class="page-title">Calendario</h1>
+        <p class="page-sub">Fechas importantes de tus procesos</p>
+        <div class="empty-state">
+          <div class="empty-state-icon">📅</div>
+          <div class="empty-state-title">Próximamente</div>
+          <div class="empty-state-desc">El calendario estará disponible pronto</div>
+        </div>
+      </div>
+      
+      <!-- Publicaciones View -->
+      <div id="publicacionesView" class="view hidden">
+        <h1 class="page-title">Publicaciones Procesales</h1>
+        <p class="page-sub">Consulta las publicaciones de la Rama Judicial</p>
+        
+        <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;">
+          <h3 style="margin:0 0 16px;font-size:15px;">Consultar por despacho</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;align-items:end;">
+            <div>
+              <label style="display:block;font-size:12px;margin-bottom:6px;color:var(--text-muted);">Fecha inicio</label>
+              <input type="date" id="fechaInicio" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;">
+            </div>
+            <div>
+              <label style="display:block;font-size:12px;margin-bottom:6px;color:var(--text-muted);">Fecha fin</label>
+              <input type="date" id="fechaFin" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;">
+            </div>
+            <div>
+              <label style="display:block;font-size:12px;margin-bottom:6px;color:var(--text-muted);">Despacho</label>
+              <input type="text" id="despachoInput" placeholder="ID del despacho" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;">
+            </div>
+            <button class="btn btn-primary" onclick="consultarPublicaciones()">Consultar</button>
+          </div>
+        </div>
+        
+        <div id="publicacionesContent">
+          <div class="empty-state">
+            <div class="empty-state-icon">📰</div>
+            <div class="empty-state-title">Consulta publicaciones</div>
+            <div class="empty-state-desc">Selecciona un rango de fechas y un despacho para consultar</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Admin View -->
+      <div id="adminView" class="view hidden">
+        <h1 class="page-title">Administrar Usuarios</h1>
+        <p class="page-sub">Gestiona los usuarios que pueden acceder a MiRadicado</p>
+        
+        <!-- Pending users -->
+        <div class="admin-section">
+          <h2 class="admin-section-title">
+            ⏳ Usuarios pendientes de aprobación
+            <span class="count" id="pendingCount">0</span>
+          </h2>
+          <div id="pendingUsersTable">
+            <div class="empty-state">
+              <div class="empty-state-icon">✅</div>
+              <div class="empty-state-title">No hay usuarios pendientes</div>
+              <div class="empty-state-desc">Todos los usuarios han sido revisados</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Approved users -->
+        <div class="admin-section">
+          <h2 class="admin-section-title">
+            ✅ Usuarios aprobados
+            <span class="count" id="approvedCount">0</span>
+          </h2>
+          <div id="approvedUsersTable">
+            <div class="loading">
+              <div class="spinner"></div>
+              <span>Cargando usuarios...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Add Proceso Modal -->
+<div class="overlay" id="addProcesoModal">
+  <div class="modal" style="width:500px">
+    <h2>➕ Agregar Proceso</h2>
+    <div class="field">
+      <label>Número de radicado *</label>
+      <input type="text" id="radicadoInput" placeholder="Ej: 11001310503720230012300">
+    </div>
+    <div class="field">
+      <label>Despacho</label>
+      <input type="text" id="despachoProcesoInput" placeholder="Nombre del despacho">
+    </div>
+    <div class="field">
+      <label>Tipo de proceso</label>
+      <select id="tipoProcesoInput">
+        <option value="">Seleccionar...</option>
+        <option value="Civil">Civil</option>
+        <option value="Familia">Familia</option>
+        <option value="Laboral">Laboral</option>
+        <option value="Penal">Penal</option>
+        <option value="Administrativo">Administrativo</option>
+        <option value="Otro">Otro</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Demandante</label>
+      <input type="text" id="demandanteInput" placeholder="Nombre del demandante">
+    </div>
+    <div class="field">
+      <label>Demandado</label>
+      <input type="text" id="demandadoInput" placeholder="Nombre del demandado">
+    </div>
+    <div class="field">
+      <label>Notas</label>
+      <textarea id="notasProcesoInput" placeholder="Notas adicionales..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeAddProcesoModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveProceso()">Guardar proceso</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========== SUPABASE CONFIGURATION ==========
+const SUPABASE_URL = 'https://wwpupchudqdfvlgeqkjn.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_11togyKe5cbvosCsew1xmQ_hN2ms5nf';
+
+// Initialize Supabase client
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Current user state
+let currentUser = null;
+let currentProfile = null;
+
+// ========== AUTHENTICATION ==========
+async function signInWithGoogle() {
+  try {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin + window.location.pathname
+      }
+    });
+    
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error signing in:', error);
+    showToast('Error al iniciar sesión: ' + error.message, 'error');
+  }
+}
+
+async function signOut() {
+  try {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+    
+    currentUser = null;
+    currentProfile = null;
+    showScreen('login');
+  } catch (error) {
+    console.error('Error signing out:', error);
+    showToast('Error al cerrar sesión', 'error');
+  }
+}
+
+async function checkSession() {
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    
+    if (error) throw error;
+    
+    if (session) {
+      currentUser = session.user;
+      await loadUserProfile();
+    } else {
+      showScreen('login');
+    }
+  } catch (error) {
+    console.error('Error checking session:', error);
+    showScreen('login');
+  }
+}
+
+async function loadUserProfile() {
+  try {
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', currentUser.id)
+      .single();
+    
+    if (error) {
+      // Profile might not exist yet if trigger hasn't run
+      console.log('Profile not found, might be new user');
+      // Wait a bit and retry
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const { data: retryProfile, error: retryError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', currentUser.id)
+        .single();
+      
+      if (retryError) throw retryError;
+      currentProfile = retryProfile;
+    } else {
+      currentProfile = profile;
+    }
+    
+    // Check if user is approved
+    if (currentProfile.is_approved) {
+      showScreen('main');
+      updateUserUI();
+      loadDashboard();
+    } else {
+      showScreen('pending');
+      document.getElementById('pendingEmail').textContent = currentUser.email;
+    }
+    
+  } catch (error) {
+    console.error('Error loading profile:', error);
+    showToast('Error al cargar perfil', 'error');
+  }
+}
+
+async function checkApprovalStatus() {
+  showToast('Verificando estado...', 'info');
+  await loadUserProfile();
+}
+
+// ========== UI FUNCTIONS ==========
+function showScreen(screen) {
+  document.getElementById('loginScreen').classList.toggle('hidden', screen !== 'login');
+  document.getElementById('pendingScreen').classList.toggle('hidden', screen !== 'pending');
+  document.getElementById('mainApp').classList.toggle('hidden', screen !== 'main');
+}
+
+function updateUserUI() {
+  if (!currentUser || !currentProfile) return;
+  
+  // Update sidebar user info
+  document.getElementById('userName').textContent = currentProfile.full_name || currentUser.email.split('@')[0];
+  document.getElementById('userEmailSidebar').textContent = currentUser.email;
+  document.getElementById('welcomeName').textContent = (currentProfile.full_name || currentUser.email.split('@')[0]).split(' ')[0];
+  
+  // Update avatar
+  const avatarEl = document.getElementById('userAvatar');
+  const initialsEl = document.getElementById('userInitials');
+  
+  if (currentProfile.avatar_url) {
+    avatarEl.innerHTML = `<img src="${currentProfile.avatar_url}" alt="Avatar">`;
+  } else {
+    const initials = (currentProfile.full_name || currentUser.email).substring(0, 2).toUpperCase();
+    initialsEl.textContent = initials;
+  }
+  
+  // Show admin nav if admin
+  if (currentProfile.role === 'admin') {
+    document.getElementById('adminNav').classList.remove('hidden');
+    document.getElementById('userRole').classList.remove('hidden');
+  }
+}
+
+function showView(viewName) {
+  // Update nav items
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.classList.toggle('active', item.dataset.view === viewName);
+  });
+  
+  // Update views
+  document.querySelectorAll('.view').forEach(view => {
+    view.classList.add('hidden');
+  });
+  document.getElementById(viewName + 'View').classList.remove('hidden');
+  
+  // Update topbar title
+  const titles = {
+    dashboard: '📊 Dashboard',
+    procesos: '📁 Mis Procesos',
+    calendario: '📅 Calendario',
+    publicaciones: '📰 Publicaciones Procesales',
+    admin: '👥 Administrar Usuarios'
+  };
+  document.getElementById('topbarTitle').textContent = titles[viewName] || viewName;
+  
+  // Load view data
+  if (viewName === 'procesos') loadProcesos();
+  if (viewName === 'admin') loadAdminData();
+}
+
+// ========== DASHBOARD ==========
+async function loadDashboard() {
+  try {
+    const { data: procesos, error } = await supabase
+      .from('procesos')
+      .select('*')
+      .eq('user_id', currentUser.id);
+    
+    if (error) throw error;
+    
+    const total = procesos.length;
+    const activos = procesos.filter(p => p.estado === 'activo').length;
+    
+    document.getElementById('statTotal').textContent = total;
+    document.getElementById('statActivos').textContent = activos;
+    document.getElementById('statAudiencias').textContent = '0';
+    document.getElementById('statNotificaciones').textContent = '0';
+    
+    document.getElementById('emptyDashboard').classList.toggle('hidden', total > 0);
+    
+  } catch (error) {
+    console.error('Error loading dashboard:', error);
+  }
+}
+
+// ========== PROCESOS ==========
+async function loadProcesos() {
+  const container = document.getElementById('procesosContent');
+  container.innerHTML = '<div class="loading"><div class="spinner"></div><span>Cargando procesos...</span></div>';
+  
+  try {
+    const { data: procesos, error } = await supabase
+      .from('procesos')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    
+    if (procesos.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">📁</div>
+          <div class="empty-state-title">No tienes procesos</div>
+          <div class="empty-state-desc">Agrega tu primer proceso para comenzar</div>
+        </div>
+      `;
+      return;
+    }
+    
+    let html = '<table class="users-table"><thead><tr>';
+    html += '<th>Radicado</th><th>Despacho</th><th>Tipo</th><th>Estado</th><th>Acciones</th>';
+    html += '</tr></thead><tbody>';
+    
+    procesos.forEach(p => {
+      html += `
+        <tr>
+          <td><strong>${p.radicado}</strong></td>
+          <td>${p.despacho || '-'}</td>
+          <td>${p.tipo || '-'}</td>
+          <td><span class="status-badge ${p.estado === 'activo' ? 'approved' : 'pending'}">${p.estado}</span></td>
+          <td>
+            <button class="btn" onclick="viewProceso('${p.id}')">Ver</button>
+            <button class="btn-reject" onclick="deleteProceso('${p.id}')">🗑️</button>
+          </td>
+        </tr>
+      `;
+    });
+    
+    html += '</tbody></table>';
+    container.innerHTML = html;
+    
+  } catch (error) {
+    console.error('Error loading procesos:', error);
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-title">Error al cargar procesos</div></div>';
+  }
+}
+
+function openAddProcesoModal() {
+  document.getElementById('addProcesoModal').classList.add('open');
+}
+
+function closeAddProcesoModal() {
+  document.getElementById('addProcesoModal').classList.remove('open');
+  // Clear form
+  document.getElementById('radicadoInput').value = '';
+  document.getElementById('despachoProcesoInput').value = '';
+  document.getElementById('tipoProcesoInput').value = '';
+  document.getElementById('demandanteInput').value = '';
+  document.getElementById('demandadoInput').value = '';
+  document.getElementById('notasProcesoInput').value = '';
+}
+
+async function saveProceso() {
+  const radicado = document.getElementById('radicadoInput').value.trim();
+  
+  if (!radicado) {
+    showToast('El radicado es obligatorio', 'error');
+    return;
+  }
+  
+  try {
+    const { data, error } = await supabase
+      .from('procesos')
+      .insert({
+        user_id: currentUser.id,
+        radicado: radicado,
+        despacho: document.getElementById('despachoProcesoInput').value.trim() || null,
+        tipo: document.getElementById('tipoProcesoInput').value || null,
+        demandante: document.getElementById('demandanteInput').value.trim() || null,
+        demandado: document.getElementById('demandadoInput').value.trim() || null,
+        notas: document.getElementById('notasProcesoInput').value.trim() || null,
+        estado: 'activo'
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    showToast('Proceso agregado exitosamente', 'success');
+    closeAddProcesoModal();
+    loadProcesos();
+    loadDashboard();
+    
+  } catch (error) {
+    console.error('Error saving proceso:', error);
+    showToast('Error al guardar: ' + error.message, 'error');
+  }
+}
+
+async function deleteProceso(id) {
+  if (!confirm('¿Estás seguro de eliminar este proceso?')) return;
+  
+  try {
+    const { error } = await supabase
+      .from('procesos')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', currentUser.id);
+    
+    if (error) throw error;
+    
+    showToast('Proceso eliminado', 'success');
+    loadProcesos();
+    loadDashboard();
+    
+  } catch (error) {
+    console.error('Error deleting proceso:', error);
+    showToast('Error al eliminar', 'error');
+  }
+}
+
+function viewProceso(id) {
+  showToast('Vista de detalle próximamente', 'info');
+}
+
+// ========== ADMIN FUNCTIONS ==========
+async function loadAdminData() {
+  if (currentProfile.role !== 'admin') {
+    showToast('No tienes permisos de administrador', 'error');
+    return;
+  }
+  
+  try {
+    // Load all profiles
+    const { data: profiles, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    
+    const pending = profiles.filter(p => !p.is_approved);
+    const approved = profiles.filter(p => p.is_approved);
+    
+    document.getElementById('pendingCount').textContent = pending.length;
+    document.getElementById('approvedCount').textContent = approved.length;
+    
+    // Render pending users
+    if (pending.length === 0) {
+      document.getElementById('pendingUsersTable').innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">✅</div>
+          <div class="empty-state-title">No hay usuarios pendientes</div>
+        </div>
+      `;
+    } else {
+      let html = '<table class="users-table"><thead><tr>';
+      html += '<th>Usuario</th><th>Fecha registro</th><th>Acciones</th>';
+      html += '</tr></thead><tbody>';
+      
+      pending.forEach(user => {
+        const date = new Date(user.created_at).toLocaleDateString('es-CO');
+        html += `
+          <tr>
+            <td>
+              <div class="user-cell">
+                <div class="user-cell-avatar">
+                  ${user.avatar_url ? `<img src="${user.avatar_url}">` : user.email.substring(0,2).toUpperCase()}
+                </div>
+                <div class="user-cell-info">
+                  <div class="user-cell-name">${user.full_name || 'Sin nombre'}</div>
+                  <div class="user-cell-email">${user.email}</div>
+                </div>
+              </div>
+            </td>
+            <td>${date}</td>
+            <td>
+              <div class="action-btns">
+                <button class="btn-approve" onclick="approveUser('${user.id}')">✅ Aprobar</button>
+                <button class="btn-reject" onclick="rejectUser('${user.id}')">❌ Rechazar</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      });
+      
+      html += '</tbody></table>';
+      document.getElementById('pendingUsersTable').innerHTML = html;
+    }
+    
+    // Render approved users
+    let approvedHtml = '<table class="users-table"><thead><tr>';
+    approvedHtml += '<th>Usuario</th><th>Rol</th><th>Procesos</th><th>Acciones</th>';
+    approvedHtml += '</tr></thead><tbody>';
+    
+    for (const user of approved) {
+      // Get process count for each user
+      const { count } = await supabase
+        .from('procesos')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+      
+      approvedHtml += `
+        <tr>
+          <td>
+            <div class="user-cell">
+              <div class="user-cell-avatar">
+                ${user.avatar_url ? `<img src="${user.avatar_url}">` : user.email.substring(0,2).toUpperCase()}
+              </div>
+              <div class="user-cell-info">
+                <div class="user-cell-name">${user.full_name || 'Sin nombre'}</div>
+                <div class="user-cell-email">${user.email}</div>
+              </div>
+            </div>
+          </td>
+          <td><span class="status-badge ${user.role === 'admin' ? 'admin' : 'approved'}">${user.role}</span></td>
+          <td>${count || 0}</td>
+          <td>
+            <div class="action-btns">
+              ${user.role !== 'admin' ? `<button class="btn-make-admin" onclick="makeAdmin('${user.id}')">👑 Hacer Admin</button>` : '<span style="color:var(--text-muted)">—</span>'}
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+    
+    approvedHtml += '</tbody></table>';
+    document.getElementById('approvedUsersTable').innerHTML = approvedHtml;
+    
+  } catch (error) {
+    console.error('Error loading admin data:', error);
+    showToast('Error al cargar datos', 'error');
+  }
+}
+
+async function approveUser(userId) {
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ is_approved: true })
+      .eq('id', userId);
+    
+    if (error) throw error;
+    
+    showToast('Usuario aprobado ✅', 'success');
+    loadAdminData();
+    
+  } catch (error) {
+    console.error('Error approving user:', error);
+    showToast('Error al aprobar usuario', 'error');
+  }
+}
+
+async function rejectUser(userId) {
+  if (!confirm('¿Estás seguro de rechazar este usuario? Se eliminará su cuenta.')) return;
+  
+  try {
+    // Delete profile (user will need to register again)
+    const { error } = await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', userId);
+    
+    if (error) throw error;
+    
+    showToast('Usuario rechazado', 'success');
+    loadAdminData();
+    
+  } catch (error) {
+    console.error('Error rejecting user:', error);
+    showToast('Error al rechazar usuario', 'error');
+  }
+}
+
+async function makeAdmin(userId) {
+  if (!confirm('¿Hacer a este usuario administrador?')) return;
+  
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ role: 'admin' })
+      .eq('id', userId);
+    
+    if (error) throw error;
+    
+    showToast('Usuario ahora es administrador 👑', 'success');
+    loadAdminData();
+    
+  } catch (error) {
+    console.error('Error making admin:', error);
+    showToast('Error al cambiar rol', 'error');
+  }
+}
+
+// ========== PUBLICACIONES ==========
+async function consultarPublicaciones() {
+  const fechaInicio = document.getElementById('fechaInicio').value;
+  const fechaFin = document.getElementById('fechaFin').value;
+  const despacho = document.getElementById('despachoInput').value;
+  
+  if (!fechaInicio || !fechaFin) {
+    showToast('Selecciona las fechas', 'error');
+    return;
+  }
+  
+  const container = document.getElementById('publicacionesContent');
+  container.innerHTML = '<div class="loading"><div class="spinner"></div><span>Consultando publicaciones...</span></div>';
+  
+  try {
+    // Format dates
+    const fi = fechaInicio.split('-').reverse().join('/');
+    const ff = fechaFin.split('-').reverse().join('/');
+    
+    const url = `/api/publicaciones?fechaInicio=${fi}&fechaFin=${ff}&idDespacho=${despacho}&profunda=true`;
+    
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    if (!data.success) {
+      throw new Error(data.error || 'Error en la consulta');
+    }
+    
+    let html = `<div style="margin-bottom:16px;padding:12px;background:var(--green-bg);border-radius:8px;color:var(--green-text);">
+      ✅ Se encontraron ${data.totalDocumentos || 0} documentos en ${data.estadosConsultados || 0} estados consultados
+    </div>`;
+    
+    if (data.documentosExpediente && data.documentosExpediente.length > 0) {
+      html += '<h3 style="margin:20px 0 12px;">📄 Documentos de Expediente</h3>';
+      html += '<table class="users-table"><thead><tr><th>Documento</th><th>Código</th><th>Acciones</th></tr></thead><tbody>';
+      
+      data.documentosExpediente.forEach(doc => {
+        html += `
+          <tr>
+            <td>${doc.nombre}</td>
+            <td><code>${doc.codigoExpediente}</code></td>
+            <td><a href="${doc.url}" target="_blank" class="btn">⬇️ Descargar</a></td>
+          </tr>
+        `;
+      });
+      
+      html += '</tbody></table>';
+    }
+    
+    container.innerHTML = html;
+    
+  } catch (error) {
+    console.error('Error:', error);
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-title">Error al consultar</div><div class="empty-state-desc">${error.message}</div></div>`;
+  }
+}
+
+// ========== TOAST NOTIFICATIONS ==========
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  
+  const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+  toast.innerHTML = `
+    <span class="toast-icon">${icons[type] || 'ℹ️'}</span>
+    <span class="toast-message">${message}</span>
+  `;
+  
+  container.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.style.animation = 'slideIn 0.3s ease reverse';
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
+}
+
+// ========== MODAL HANDLERS ==========
+document.querySelectorAll('.overlay').forEach(overlay => {
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      overlay.classList.remove('open');
+    }
+  });
+});
+
+// ========== AUTH STATE LISTENER ==========
+supabase.auth.onAuthStateChange(async (event, session) => {
+  console.log('Auth state changed:', event);
+  
+  if (event === 'SIGNED_IN' && session) {
+    currentUser = session.user;
+    await loadUserProfile();
+  } else if (event === 'SIGNED_OUT') {
+    currentUser = null;
+    currentProfile = null;
+    showScreen('login');
+  }
+});
+
+// ========== INITIALIZATION ==========
+document.addEventListener('DOMContentLoaded', () => {
+  // Set default dates for publicaciones
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  document.getElementById('fechaInicio').value = yesterday.toISOString().split('T')[0];
+  document.getElementById('fechaFin').value = today.toISOString().split('T')[0];
+  
+  // Check session
+  checkSession();
+});
+</script>
+
+</body>
+</html>
