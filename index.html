@@ -3,10 +3,12 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Seguimiento de Procesos</title>
+<title>MiRadicado - Seguimiento de Procesos</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Supabase JS Client -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
     --bg:#ffffff;
@@ -1115,10 +1117,136 @@
   .sync-stat{padding:20px;background:#fff;border:1px solid var(--border);border-radius:10px;text-align:center;}
   .sync-stat-value{font-size:20px;font-weight:600;color:var(--text);margin-bottom:4px;}
   .sync-stat-label{font-size:13px;color:var(--text-muted);}
+
+  /* ========== AUTH STYLES ========== */
+  .login-screen{
+    min-height:100vh;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    position:fixed;inset:0;z-index:9999;
+  }
+  .login-screen.hidden{display:none;}
+  .login-card{
+    background:#fff;border-radius:16px;padding:48px 40px;width:100%;max-width:420px;
+    box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);text-align:center;
+  }
+  .login-logo{
+    width:80px;height:80px;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius:20px;display:flex;align-items:center;justify-content:center;
+    margin:0 auto 24px;font-size:36px;color:#fff;
+  }
+  .login-title{font-size:28px;font-weight:700;margin:0 0 8px;color:var(--text);}
+  .login-subtitle{font-size:15px;color:var(--text-muted);margin:0 0 32px;}
+  .google-btn{
+    display:flex;align-items:center;justify-content:center;gap:12px;width:100%;
+    padding:14px 24px;border:1px solid var(--border);border-radius:10px;
+    background:#fff;font-size:15px;font-weight:500;color:var(--text);cursor:pointer;transition:all 0.2s;
+  }
+  .google-btn:hover{background:#f8f9fa;border-color:#d1d5db;box-shadow:0 4px 12px rgba(0,0,0,0.1);}
+  .google-btn img{width:20px;height:20px;}
+  .login-footer{margin-top:32px;font-size:12px;color:var(--text-muted);}
+  .login-footer a{color:var(--accent);text-decoration:none;}
+  
+  .pending-screen{
+    min-height:100vh;display:flex;align-items:center;justify-content:center;
+    background:#f8fafc;position:fixed;inset:0;z-index:9999;
+  }
+  .pending-screen.hidden{display:none;}
+  .pending-card{
+    background:#fff;border-radius:16px;padding:48px 40px;width:100%;max-width:480px;
+    box-shadow:0 4px 24px rgba(0,0,0,0.08);text-align:center;
+  }
+  .pending-icon{
+    width:80px;height:80px;background:var(--amber-bg);border-radius:50%;
+    display:flex;align-items:center;justify-content:center;margin:0 auto 24px;font-size:40px;
+  }
+  .pending-title{font-size:24px;font-weight:700;margin:0 0 12px;color:var(--text);}
+  .pending-message{font-size:15px;color:var(--text-muted);margin:0 0 24px;line-height:1.6;}
+  .pending-email{
+    display:inline-block;padding:8px 16px;background:var(--gray-bg);
+    border-radius:8px;font-size:14px;color:var(--text);margin-bottom:24px;
+  }
+  .pending-actions{display:flex;gap:12px;justify-content:center;}
+  .btn-secondary{
+    padding:12px 24px;border:1px solid var(--border);border-radius:8px;
+    background:#fff;font-size:14px;font-weight:500;color:var(--text);cursor:pointer;transition:all 0.2s;
+  }
+  .btn-secondary:hover{background:#f5f5f5;}
+  
+  .app.hidden{display:none !important;}
+  
+  .logout-btn{
+    display:flex;align-items:center;gap:8px;padding:8px 12px;margin-top:8px;
+    border:1px solid var(--border);border-radius:8px;background:#fff;
+    font-size:13px;color:var(--text-muted);cursor:pointer;width:100%;
+  }
+  .logout-btn:hover{background:#fef2f2;color:var(--red-text);border-color:#fecaca;}
+  
+  .user-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+  .user-role{font-size:10px;color:var(--accent);font-weight:600;text-transform:uppercase;}
+  
+  .nav-item.admin-only{border-top:1px solid var(--border);margin-top:8px;padding-top:18px;}
+  .nav-item.admin-only.hidden{display:none;}
+  
+  /* Admin panel styles */
+  .admin-section{margin-bottom:32px;}
+  .admin-section-title{font-size:16px;font-weight:600;margin:0 0 16px;display:flex;align-items:center;gap:8px;}
+  .admin-section-title .count{background:var(--amber-bg);color:var(--amber-text);padding:2px 8px;border-radius:10px;font-size:12px;}
+  .users-table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+  .users-table th{text-align:left;font-size:12px;font-weight:600;color:var(--text-muted);padding:12px 16px;border-bottom:1px solid var(--border);background:#fafafa;}
+  .users-table td{padding:14px 16px;border-bottom:1px solid var(--border);font-size:13px;}
+  .users-table tr:last-child td{border-bottom:none;}
+  .users-table tr:hover{background:#f8fafc;}
+  .user-cell{display:flex;align-items:center;gap:12px;}
+  .user-cell-avatar{width:36px;height:36px;border-radius:50%;background:#e5e7eb;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+  .user-cell-avatar img{width:100%;height:100%;object-fit:cover;}
+  .user-cell-name{font-weight:500;color:var(--text);}
+  .user-cell-email{font-size:12px;color:var(--text-muted);}
+  .status-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;}
+  .status-badge.pending{background:var(--amber-bg);color:var(--amber-text);}
+  .status-badge.approved{background:var(--green-bg);color:var(--green-text);}
+  .status-badge.admin{background:var(--accent-soft);color:var(--accent);}
+  .action-btns{display:flex;gap:8px;}
+  .btn-approve{padding:6px 14px;border:none;border-radius:6px;background:var(--green-bg);color:var(--green-text);font-size:12px;font-weight:500;cursor:pointer;}
+  .btn-approve:hover{background:#bbf7d0;}
+  .btn-reject{padding:6px 14px;border:none;border-radius:6px;background:var(--red-bg);color:var(--red-text);font-size:12px;font-weight:500;cursor:pointer;}
+  .btn-reject:hover{background:#fecaca;}
+  .btn-make-admin{padding:6px 14px;border:1px solid var(--accent);border-radius:6px;background:#fff;color:var(--accent);font-size:12px;font-weight:500;cursor:pointer;}
+  .btn-make-admin:hover{background:var(--accent-soft);}
+  .admin-empty{text-align:center;padding:48px 24px;color:var(--text-muted);}
+  .admin-empty-icon{font-size:48px;margin-bottom:12px;opacity:0.5;}
 </style>
 </head>
 <body>
-<div class="app">
+
+<!-- ========== LOGIN SCREEN ========== -->
+<div id="loginScreen" class="login-screen">
+  <div class="login-card">
+    <div class="login-logo">⚖️</div>
+    <h1 class="login-title">MiRadicado</h1>
+    <p class="login-subtitle">Seguimiento inteligente de procesos judiciales</p>
+    <button class="google-btn" onclick="signInWithGoogle()">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+      Continuar con Google
+    </button>
+    <div class="login-footer">Al continuar, aceptas los <a href="#">términos de servicio</a></div>
+  </div>
+</div>
+
+<!-- ========== PENDING APPROVAL SCREEN ========== -->
+<div id="pendingScreen" class="pending-screen hidden">
+  <div class="pending-card">
+    <div class="pending-icon">⏳</div>
+    <h1 class="pending-title">Cuenta pendiente de aprobación</h1>
+    <p class="pending-message">Tu cuenta ha sido registrada exitosamente. Un administrador revisará y aprobará tu acceso pronto.</p>
+    <div class="pending-email" id="pendingEmail">correo@ejemplo.com</div>
+    <div class="pending-actions">
+      <button class="btn-secondary" onclick="checkApprovalStatus()">🔄 Verificar estado</button>
+      <button class="btn-secondary" onclick="signOut()">Cerrar sesión</button>
+    </div>
+  </div>
+</div>
+
+<div class="app hidden" id="mainApp">
   <aside class="sidebar">
     <div class="brand">
       <div class="brand-avatar">A</div>
@@ -1135,31 +1263,20 @@
       <button class="nav-item" data-view="clientes"><span class="nav-icon">👤</span> Clientes <span style="margin-left:auto;font-size:12px;color:var(--text-muted);">+</span></button>
       <button class="nav-item" data-view="despachos"><span class="nav-icon">🏛</span> Despachos</button>
       <button class="nav-item" data-view="configuraciones"><span class="nav-icon">⚙</span> Configuraciones <span style="margin-left:auto;font-size:10px;color:var(--text-muted);">›</span></button>
+      <button class="nav-item admin-only hidden" id="adminNav" data-view="admin"><span class="nav-icon">👥</span> Administrar Usuarios</button>
     </nav>
     <div class="sidebar-footer">
-      <div class="trial-box">
-        <div class="trial-header">
-          <span class="trial-title"><span class="trial-dot"></span> Prueba gratis</span>
-          <span class="trial-days">30 días</span>
+      <div class="user-row" id="userRow">
+        <div class="user-avatar" id="userAvatar">U</div>
+        <div style="flex:1;min-width:0;">
+          <div class="user-name" id="userName">Usuario</div>
+          <div class="user-email" id="userEmail">correo@ejemplo.com</div>
+          <div class="user-role hidden" id="userRole">ADMIN</div>
         </div>
-        <div class="trial-count">0 de 10 expedientes</div>
-        <div class="trial-progress"><div class="trial-progress-bar" style="width:0%"></div></div>
-        <button class="trial-btn" style="margin-top:10px;">Ajustar capacidad</button>
       </div>
-      <div class="add-card-box">
-        <div class="add-card-icon">💳</div>
-        <div class="add-card-title">Agrega una tarjeta</div>
-        <div class="add-card-desc">Mantén el seguimiento activo cuando termine tu prueba — sin pausas ni vencimientos perdidos.</div>
-        <button class="add-card-btn">💳 Agregar tarjeta</button>
-      </div>
-      <div class="user-row">
-        <div class="user-avatar">A</div>
-        <div>
-          <div class="user-name">Alain Prieto Marquez</div>
-          <div class="user-email">alp.marquez@gmail.com</div>
-        </div>
-        <span style="margin-left:auto;color:var(--text-muted);cursor:pointer;">⌃</span>
-      </div>
+      <button class="logout-btn" onclick="signOut()">
+        <span>🚪</span> Cerrar sesión
+      </button>
     </div>
   </aside>
   <div class="main">
@@ -1181,6 +1298,259 @@
 </div>
 
 <script>
+// ========== SUPABASE CONFIGURATION ==========
+const SUPABASE_URL = 'https://wwpupchudqdfvlgeqkjn.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3cHVwY2h1ZHFkZnZsZ2Vxa2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc5NzA4NzcsImV4cCI6MjEwMzU0Njg3N30.okMhP5FZqkHq_T-b9QzjOq-zYZZd79TIHRj-ombQQYU';
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser = null;
+let currentProfile = null;
+
+// ========== AUTH FUNCTIONS ==========
+async function signInWithGoogle() {
+  try {
+    const { data, error } = await supabaseClient.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin + window.location.pathname }
+    });
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error signing in:', error);
+    alert('Error al iniciar sesión: ' + error.message);
+  }
+}
+
+async function signOut() {
+  try {
+    const { error } = await supabaseClient.auth.signOut();
+    if (error) throw error;
+    currentUser = null;
+    currentProfile = null;
+    showScreen('login');
+  } catch (error) {
+    console.error('Error signing out:', error);
+  }
+}
+
+async function checkSession() {
+  try {
+    const { data: { session }, error } = await supabaseClient.auth.getSession();
+    if (error) throw error;
+    if (session) {
+      currentUser = session.user;
+      await loadUserProfile();
+    } else {
+      showScreen('login');
+    }
+  } catch (error) {
+    console.error('Error checking session:', error);
+    showScreen('login');
+  }
+}
+
+async function loadUserProfile() {
+  try {
+    const { data: profile, error } = await supabaseClient
+      .from('profiles')
+      .select('*')
+      .eq('id', currentUser.id)
+      .single();
+    
+    if (error) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { data: retryProfile, error: retryError } = await supabaseClient
+        .from('profiles')
+        .select('*')
+        .eq('id', currentUser.id)
+        .single();
+      if (retryError) throw retryError;
+      currentProfile = retryProfile;
+    } else {
+      currentProfile = profile;
+    }
+    
+    if (currentProfile && currentProfile.is_approved) {
+      showScreen('main');
+      updateUserUI();
+      loadData();
+    } else {
+      showScreen('pending');
+      document.getElementById('pendingEmail').textContent = currentUser.email;
+    }
+  } catch (error) {
+    console.error('Error loading profile:', error);
+    showScreen('pending');
+    document.getElementById('pendingEmail').textContent = currentUser?.email || '';
+  }
+}
+
+async function checkApprovalStatus() {
+  alert('Verificando estado...');
+  await loadUserProfile();
+}
+
+function showScreen(screen) {
+  document.getElementById('loginScreen').classList.toggle('hidden', screen !== 'login');
+  document.getElementById('pendingScreen').classList.toggle('hidden', screen !== 'pending');
+  document.getElementById('mainApp').classList.toggle('hidden', screen !== 'main');
+}
+
+function updateUserUI() {
+  if (!currentUser || !currentProfile) return;
+  document.getElementById('userName').textContent = currentProfile.full_name || currentUser.email.split('@')[0];
+  document.getElementById('userEmail').textContent = currentUser.email;
+  
+  const avatarEl = document.getElementById('userAvatar');
+  if (currentProfile.avatar_url) {
+    avatarEl.innerHTML = `<img src="${currentProfile.avatar_url}" alt="Avatar">`;
+  } else {
+    avatarEl.textContent = (currentProfile.full_name || currentUser.email).substring(0, 1).toUpperCase();
+  }
+  
+  if (currentProfile.role === 'admin') {
+    document.getElementById('adminNav').classList.remove('hidden');
+    document.getElementById('userRole').classList.remove('hidden');
+  }
+}
+
+// Admin functions
+async function loadAdminView() {
+  if (currentProfile?.role !== 'admin') return;
+  
+  const content = document.getElementById('content');
+  content.innerHTML = '<div class="loading"><div class="spinner"></div>Cargando usuarios...</div>';
+  
+  try {
+    const { data: profiles, error } = await supabaseClient
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    
+    const pending = profiles.filter(p => !p.is_approved);
+    const approved = profiles.filter(p => p.is_approved);
+    
+    let html = `
+      <h1 class="page-title">Administrar Usuarios</h1>
+      <p class="page-sub">Gestiona los usuarios que pueden acceder a MiRadicado</p>
+      
+      <div class="admin-section">
+        <h2 class="admin-section-title">⏳ Usuarios pendientes <span class="count">${pending.length}</span></h2>
+        ${pending.length === 0 ? `
+          <div class="admin-empty">
+            <div class="admin-empty-icon">✅</div>
+            <p>No hay usuarios pendientes de aprobación</p>
+          </div>
+        ` : `
+          <table class="users-table">
+            <thead><tr><th>Usuario</th><th>Fecha registro</th><th>Acciones</th></tr></thead>
+            <tbody>
+              ${pending.map(u => `
+                <tr>
+                  <td>
+                    <div class="user-cell">
+                      <div class="user-cell-avatar">${u.avatar_url ? `<img src="${u.avatar_url}">` : u.email.substring(0,2).toUpperCase()}</div>
+                      <div><div class="user-cell-name">${u.full_name || 'Sin nombre'}</div><div class="user-cell-email">${u.email}</div></div>
+                    </div>
+                  </td>
+                  <td>${new Date(u.created_at).toLocaleDateString('es-CO')}</td>
+                  <td>
+                    <div class="action-btns">
+                      <button class="btn-approve" onclick="approveUser('${u.id}')">✅ Aprobar</button>
+                      <button class="btn-reject" onclick="rejectUser('${u.id}')">❌ Rechazar</button>
+                    </div>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `}
+      </div>
+      
+      <div class="admin-section">
+        <h2 class="admin-section-title">✅ Usuarios aprobados <span class="count">${approved.length}</span></h2>
+        <table class="users-table">
+          <thead><tr><th>Usuario</th><th>Rol</th><th>Acciones</th></tr></thead>
+          <tbody>
+            ${approved.map(u => `
+              <tr>
+                <td>
+                  <div class="user-cell">
+                    <div class="user-cell-avatar">${u.avatar_url ? `<img src="${u.avatar_url}">` : u.email.substring(0,2).toUpperCase()}</div>
+                    <div><div class="user-cell-name">${u.full_name || 'Sin nombre'}</div><div class="user-cell-email">${u.email}</div></div>
+                  </div>
+                </td>
+                <td><span class="status-badge ${u.role === 'admin' ? 'admin' : 'approved'}">${u.role}</span></td>
+                <td>
+                  ${u.role !== 'admin' ? `<button class="btn-make-admin" onclick="makeAdmin('${u.id}')">👑 Hacer Admin</button>` : '—'}
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+    
+    content.innerHTML = html;
+  } catch (error) {
+    console.error('Error loading admin:', error);
+    content.innerHTML = '<div class="admin-empty"><p>Error al cargar usuarios</p></div>';
+  }
+}
+
+async function approveUser(userId) {
+  try {
+    const { error } = await supabaseClient.from('profiles').update({ is_approved: true }).eq('id', userId);
+    if (error) throw error;
+    alert('Usuario aprobado ✅');
+    loadAdminView();
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error al aprobar usuario');
+  }
+}
+
+async function rejectUser(userId) {
+  if (!confirm('¿Rechazar este usuario?')) return;
+  try {
+    const { error } = await supabaseClient.from('profiles').delete().eq('id', userId);
+    if (error) throw error;
+    alert('Usuario rechazado');
+    loadAdminView();
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error al rechazar usuario');
+  }
+}
+
+async function makeAdmin(userId) {
+  if (!confirm('¿Hacer administrador?')) return;
+  try {
+    const { error } = await supabaseClient.from('profiles').update({ role: 'admin' }).eq('id', userId);
+    if (error) throw error;
+    alert('Usuario ahora es admin 👑');
+    loadAdminView();
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error al cambiar rol');
+  }
+}
+
+// Auth state listener
+supabaseClient.auth.onAuthStateChange(async (event, session) => {
+  console.log('Auth state:', event);
+  if (event === 'SIGNED_IN' && session) {
+    currentUser = session.user;
+    await loadUserProfile();
+  } else if (event === 'SIGNED_OUT') {
+    currentUser = null;
+    currentProfile = null;
+    showScreen('login');
+  }
+});
+
+// ========== ORIGINAL APP CODE ==========
 const STORE_KEY_PROCESOS = 'procesos';
 const STORE_KEY_CLIENTES = 'clientes';
 const STORE_KEY_EVENTOS = 'eventos';
@@ -1663,7 +2033,12 @@ function clienteName(id){
 function render(){
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active', b.dataset.view===currentView || (b.dataset.view === 'procesos' && ['procesos','cargarProcesos','ramaJudicial','revisarProcesos','listoProcesos','procesoDetalle'].includes(currentView))));
   const el = document.getElementById('content');
-  if(currentView==='dashboard'){ 
+  if(currentView==='admin'){
+    document.getElementById('topbarTitle').textContent='👥 Administrar Usuarios';
+    loadAdminView();
+    return;
+  }
+  else if(currentView==='dashboard'){ 
     document.getElementById('topbarTitle').textContent='Resumen'; 
     el.innerHTML = renderDashboard(); 
   }
@@ -7604,7 +7979,8 @@ document.getElementById('modalSave').addEventListener('click', ()=>{
   else if(modalType==='evento') saveEventoModal();
 });
 
-loadData();
+// Initialize - check auth first
+checkSession();
 </script>
 </body>
-</html>// Updated Tue Aug 25 12:25:47 PM UTC 2026
+</html>
