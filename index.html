@@ -5642,6 +5642,55 @@ function bindContentEvents(){
     if(header) header.style.display = (state === 'results' || state === 'empty') ? 'flex' : 'none';
   }
   
+  // Función para parsear fecha en español
+  function parsearFechaEspanol(fechaStr){
+    if(!fechaStr) return null;
+    
+    const meses = {
+      'enero': 0, 'febrero': 1, 'marzo': 2, 'abril': 3, 'mayo': 4, 'junio': 5,
+      'julio': 6, 'agosto': 7, 'septiembre': 8, 'octubre': 9, 'noviembre': 10, 'diciembre': 11
+    };
+    
+    // Formato: "8 de agosto de 2026" o "25 de Agosto de 2026"
+    const matchTexto = fechaStr.match(/(\d+)\s+de\s+(\w+)\s+de\s+(\d{4})/i);
+    if(matchTexto){
+      const dia = parseInt(matchTexto[1]);
+      const mes = meses[matchTexto[2].toLowerCase()];
+      const año = parseInt(matchTexto[3]);
+      if(mes !== undefined){
+        return new Date(año, mes, dia);
+      }
+    }
+    
+    // Formato ISO: "2026-08-25"
+    const matchISO = fechaStr.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if(matchISO){
+      return new Date(parseInt(matchISO[1]), parseInt(matchISO[2])-1, parseInt(matchISO[3]));
+    }
+    
+    // Formato: "25/08/2026"
+    const matchBarra = fechaStr.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    if(matchBarra){
+      return new Date(parseInt(matchBarra[3]), parseInt(matchBarra[2])-1, parseInt(matchBarra[1]));
+    }
+    
+    return null;
+  }
+  
+  // Función para verificar si una fecha está en el rango
+  function fechaEnRango(fechaStr, fechaInicio, fechaFin){
+    if(!fechaStr || !fechaInicio || !fechaFin) return true; // Si no hay fecha, incluir
+    
+    const fecha = parsearFechaEspanol(fechaStr);
+    if(!fecha || isNaN(fecha.getTime())) return true; // Si no se puede parsear, incluir
+    
+    const inicio = new Date(fechaInicio);
+    const fin = new Date(fechaFin);
+    fin.setHours(23, 59, 59);
+    
+    return fecha >= inicio && fecha <= fin;
+  }
+
   // Función para renderizar publicaciones y documentos en la tabla
   function renderPublicacionesTable(publicaciones, documentos, fechaInicio, fechaFin){
     const tbody = document.getElementById('publicacionesTableBody');
@@ -5649,57 +5698,44 @@ function bindContentEvents(){
     
     if(!tbody) return;
     
-    // Filtrar documentos por fecha si tienen fecha válida
-    let documentosFiltrados = documentos || [];
-    if(fechaInicio && fechaFin && documentosFiltrados.length > 0){
-      const inicio = new Date(fechaInicio);
-      const fin = new Date(fechaFin);
-      fin.setHours(23, 59, 59); // Incluir todo el día final
-      
-      documentosFiltrados = documentosFiltrados.filter(doc => {
-        // Si el documento no tiene fecha, incluirlo (no podemos filtrar)
-        if(!doc.fecha) return true;
-        
-        // Intentar parsear la fecha del documento
-        let fechaDoc = null;
-        
-        // Formato: "25 de Agosto de 2026"
-        const matchTexto = doc.fecha.match(/(\d+)\s+de\s+(\w+)\s+de\s+(\d{4})/i);
-        if(matchTexto){
-          const meses = {
-            'enero': 0, 'febrero': 1, 'marzo': 2, 'abril': 3, 'mayo': 4, 'junio': 5,
-            'julio': 6, 'agosto': 7, 'septiembre': 8, 'octubre': 9, 'noviembre': 10, 'diciembre': 11
+    // Filtrar documentos por fecha
+    let documentosFiltrados = (documentos || []).filter(doc => {
+      // Intentar extraer fecha del nombre si no tiene fecha
+      let fecha = doc.fecha;
+      if(!fecha && doc.nombre){
+        // Buscar fecha en el nombre: "Estado-128 28 AGOST 2026.pdf"
+        const matchNombre = doc.nombre.match(/(\d{1,2})\s*(?:AGOST?|SEPT?|OCT|NOV|DIC|ENE|FEB|MAR|ABR|MAY|JUN|JUL)\w*\s*(\d{4})/i);
+        if(matchNombre){
+          const mesesCortos = {
+            'ene': 'enero', 'feb': 'febrero', 'mar': 'marzo', 'abr': 'abril', 
+            'may': 'mayo', 'jun': 'junio', 'jul': 'julio', 'ago': 'agosto', 
+            'agost': 'agosto', 'sep': 'septiembre', 'sept': 'septiembre',
+            'oct': 'octubre', 'nov': 'noviembre', 'dic': 'diciembre'
           };
-          const dia = parseInt(matchTexto[1]);
-          const mes = meses[matchTexto[2].toLowerCase()];
-          const año = parseInt(matchTexto[3]);
-          if(mes !== undefined){
-            fechaDoc = new Date(año, mes, dia);
+          const mesMatch = doc.nombre.match(/(AGOST?|SEPT?|OCT|NOV|DIC|ENE|FEB|MAR|ABR|MAY|JUN|JUL)/i);
+          if(mesMatch){
+            const mesCorto = mesMatch[1].toLowerCase().substring(0, 3);
+            const mesCompleto = mesesCortos[mesCorto] || mesesCortos[mesMatch[1].toLowerCase()];
+            if(mesCompleto){
+              fecha = `${matchNombre[1]} de ${mesCompleto} de ${matchNombre[2]}`;
+            }
           }
         }
-        
-        // Formato: "dd-mmm-yyyy" o similar
-        if(!fechaDoc){
-          const matchISO = doc.fecha.match(/(\d{4})-(\d{2})-(\d{2})/);
-          if(matchISO){
-            fechaDoc = new Date(matchISO[1], parseInt(matchISO[2])-1, matchISO[3]);
-          }
-        }
-        
-        // Si no pudimos parsear la fecha, incluir el documento
-        if(!fechaDoc || isNaN(fechaDoc.getTime())) return true;
-        
-        // Verificar si está en el rango
-        return fechaDoc >= inicio && fechaDoc <= fin;
-      });
-      
-      console.log(`[Publicaciones] Filtrado: ${documentos.length} → ${documentosFiltrados.length} documentos en rango ${fechaInicio} a ${fechaFin}`);
-    }
+      }
+      return fechaEnRango(fecha, fechaInicio, fechaFin);
+    });
+    
+    // Filtrar publicaciones por fecha
+    let publicacionesFiltradas = (publicaciones || []).filter(pub => {
+      return fechaEnRango(pub.fecha, fechaInicio, fechaFin);
+    });
+    
+    console.log(`[Publicaciones] Filtrado: ${documentos?.length || 0} → ${documentosFiltrados.length} docs, ${publicaciones?.length || 0} → ${publicacionesFiltradas.length} pubs (rango: ${fechaInicio} a ${fechaFin})`);
     
     // Combinar publicaciones y documentos para mostrar
-    const totalItems = (publicaciones?.length || 0) + (documentosFiltrados?.length || 0);
+    const totalItems = publicacionesFiltradas.length + documentosFiltrados.length;
     
-    if(countEl) countEl.textContent = `${totalItems} resultado${totalItems !== 1 ? 's' : ''} (${documentosFiltrados?.length || 0} documentos)`;
+    if(countEl) countEl.textContent = `${totalItems} resultado${totalItems !== 1 ? 's' : ''} (${documentosFiltrados.length} documentos)`;
     
     if(totalItems === 0){
       showPublicacionesState('empty');
@@ -5709,7 +5745,7 @@ function bindContentEvents(){
     let html = '';
     
     // Primero mostrar documentos PDF (que es lo que el usuario quiere)
-    if(documentosFiltrados && documentosFiltrados.length > 0){
+    if(documentosFiltrados.length > 0){
       html += documentosFiltrados.map(doc => `
         <tr class="doc-row">
           <td class="pub-titulo">
@@ -5728,8 +5764,8 @@ function bindContentEvents(){
     }
     
     // Luego mostrar publicaciones (resumen)
-    if(publicaciones && publicaciones.length > 0){
-      html += publicaciones.map(pub => `
+    if(publicacionesFiltradas.length > 0){
+      html += publicacionesFiltradas.map(pub => `
         <tr>
           <td class="pub-titulo">${pub.titulo || '—'}</td>
           <td class="pub-fecha">${pub.fecha || '—'}</td>
