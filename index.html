@@ -5643,16 +5643,63 @@ function bindContentEvents(){
   }
   
   // Función para renderizar publicaciones y documentos en la tabla
-  function renderPublicacionesTable(publicaciones, documentos){
+  function renderPublicacionesTable(publicaciones, documentos, fechaInicio, fechaFin){
     const tbody = document.getElementById('publicacionesTableBody');
     const countEl = document.getElementById('publicacionesCount');
     
     if(!tbody) return;
     
-    // Combinar publicaciones y documentos para mostrar
-    const totalItems = (publicaciones?.length || 0) + (documentos?.length || 0);
+    // Filtrar documentos por fecha si tienen fecha válida
+    let documentosFiltrados = documentos || [];
+    if(fechaInicio && fechaFin && documentosFiltrados.length > 0){
+      const inicio = new Date(fechaInicio);
+      const fin = new Date(fechaFin);
+      fin.setHours(23, 59, 59); // Incluir todo el día final
+      
+      documentosFiltrados = documentosFiltrados.filter(doc => {
+        // Si el documento no tiene fecha, incluirlo (no podemos filtrar)
+        if(!doc.fecha) return true;
+        
+        // Intentar parsear la fecha del documento
+        let fechaDoc = null;
+        
+        // Formato: "25 de Agosto de 2026"
+        const matchTexto = doc.fecha.match(/(\d+)\s+de\s+(\w+)\s+de\s+(\d{4})/i);
+        if(matchTexto){
+          const meses = {
+            'enero': 0, 'febrero': 1, 'marzo': 2, 'abril': 3, 'mayo': 4, 'junio': 5,
+            'julio': 6, 'agosto': 7, 'septiembre': 8, 'octubre': 9, 'noviembre': 10, 'diciembre': 11
+          };
+          const dia = parseInt(matchTexto[1]);
+          const mes = meses[matchTexto[2].toLowerCase()];
+          const año = parseInt(matchTexto[3]);
+          if(mes !== undefined){
+            fechaDoc = new Date(año, mes, dia);
+          }
+        }
+        
+        // Formato: "dd-mmm-yyyy" o similar
+        if(!fechaDoc){
+          const matchISO = doc.fecha.match(/(\d{4})-(\d{2})-(\d{2})/);
+          if(matchISO){
+            fechaDoc = new Date(matchISO[1], parseInt(matchISO[2])-1, matchISO[3]);
+          }
+        }
+        
+        // Si no pudimos parsear la fecha, incluir el documento
+        if(!fechaDoc || isNaN(fechaDoc.getTime())) return true;
+        
+        // Verificar si está en el rango
+        return fechaDoc >= inicio && fechaDoc <= fin;
+      });
+      
+      console.log(`[Publicaciones] Filtrado: ${documentos.length} → ${documentosFiltrados.length} documentos en rango ${fechaInicio} a ${fechaFin}`);
+    }
     
-    if(countEl) countEl.textContent = `${totalItems} resultado${totalItems !== 1 ? 's' : ''} (${documentos?.length || 0} documentos)`;
+    // Combinar publicaciones y documentos para mostrar
+    const totalItems = (publicaciones?.length || 0) + (documentosFiltrados?.length || 0);
+    
+    if(countEl) countEl.textContent = `${totalItems} resultado${totalItems !== 1 ? 's' : ''} (${documentosFiltrados?.length || 0} documentos)`;
     
     if(totalItems === 0){
       showPublicacionesState('empty');
@@ -5662,8 +5709,8 @@ function bindContentEvents(){
     let html = '';
     
     // Primero mostrar documentos PDF (que es lo que el usuario quiere)
-    if(documentos && documentos.length > 0){
-      html += documentos.map(doc => `
+    if(documentosFiltrados && documentosFiltrados.length > 0){
+      html += documentosFiltrados.map(doc => `
         <tr class="doc-row">
           <td class="pub-titulo">
             <span class="doc-icon">📄</span>
@@ -5766,7 +5813,10 @@ function bindContentEvents(){
       const data = await response.json();
       
       if(data.success){
-        renderPublicacionesTable(data.publicaciones || [], data.documentos || []);
+        // Pasar las fechas para filtrar los documentos
+        const fechaInicioVal = pubFechaInicio ? pubFechaInicio.value : '';
+        const fechaFinVal = pubFechaFin ? pubFechaFin.value : '';
+        renderPublicacionesTable(data.publicaciones || [], data.documentos || [], fechaInicioVal, fechaFinVal);
         console.log('[Publicaciones] Recibidas:', data.total, 'publicaciones,', data.totalDocumentos || 0, 'documentos');
         if(data.html_preview){
           console.log('[Publicaciones] Preview HTML:', data.html_preview);
