@@ -1771,7 +1771,7 @@ function render(){
     });
   }
   else if(currentView==='procesoDetalle'){
-    const proceso = procesos.find(p => p.id === selectedProcessId);
+    const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
     if(proceso){
       document.getElementById('topbarTitle').innerHTML=`<span style="display:flex;align-items:center;gap:8px;">&#128188; <a href="#" class="back-to-procesos" style="color:var(--text);text-decoration:none;">Procesos</a> <span style="color:var(--text-muted);font-size:12px;">&#9656;</span> ${proceso.radicado} <span style="color:var(--text-muted);font-size:12px;">&#9656;</span> ${proceso.despacho || 'Sin despacho'}</span>`;
       el.innerHTML = renderProcesoDetalle(proceso);
@@ -6628,7 +6628,7 @@ function bindContentEvents(){
   const btnSyncManual = document.getElementById('btnSyncManual');
   if(btnSyncManual){
     btnSyncManual.addEventListener('click', async () => {
-      const proceso = procesos.find(p => p.id === selectedProcessId);
+      const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
       if(proceso){
         btnSyncManual.disabled = true;
         btnSyncManual.textContent = '🔄 Sincronizando...';
@@ -6637,7 +6637,7 @@ function bindContentEvents(){
         const updated = await syncProcess(proceso);
         updated.fechaAgregado = fechaAgregadoOriginal;
         
-        const idx = procesos.findIndex(p => p.id === selectedProcessId);
+        const idx = procesos.findIndex(p => String(p.id) === String(selectedProcessId));
         if(idx !== -1){
           procesos[idx] = updated;
         }
@@ -6715,7 +6715,7 @@ function bindContentEvents(){
   const btnSyncActuaciones = document.getElementById('btnSyncActuaciones');
   if(btnSyncActuaciones){
     btnSyncActuaciones.addEventListener('click', async () => {
-      const proceso = procesos.find(p => p.id === selectedProcessId);
+      const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
       if(proceso){
         btnSyncActuaciones.disabled = true;
         btnSyncActuaciones.textContent = '🔄 Cargando...';
@@ -6724,7 +6724,7 @@ function bindContentEvents(){
         const updated = await syncProcess(proceso);
         updated.fechaAgregado = fechaAgregadoOriginal;
         
-        const idx = procesos.findIndex(p => p.id === selectedProcessId);
+        const idx = procesos.findIndex(p => String(p.id) === String(selectedProcessId));
         if(idx !== -1){
           procesos[idx] = updated;
         }
@@ -6756,13 +6756,13 @@ function bindContentEvents(){
   if(syncActuacionesLink){
     syncActuacionesLink.addEventListener('click', async (e) => {
       e.preventDefault();
-      const proceso = procesos.find(p => p.id === selectedProcessId);
+      const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
       if(proceso){
         const fechaAgregadoOriginal = proceso.fechaAgregado;
         const updated = await syncProcess(proceso);
         updated.fechaAgregado = fechaAgregadoOriginal;
         
-        const idx = procesos.findIndex(p => p.id === selectedProcessId);
+        const idx = procesos.findIndex(p => String(p.id) === String(selectedProcessId));
         if(idx !== -1){
           procesos[idx] = updated;
         }
@@ -6817,7 +6817,7 @@ function bindContentEvents(){
     ev.addEventListener('click', (e) => {
       e.stopPropagation();
       const eventId = ev.dataset.eventId;
-      const proceso = procesos.find(p => p.id === selectedProcessId);
+      const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
       if(proceso && proceso.customEvents){
         const event = proceso.customEvents.find(e => e.id === eventId);
         if(event){
@@ -6873,7 +6873,7 @@ function bindContentEvents(){
         return;
       }
       
-      const proceso = procesos.find(p => p.id === selectedProcessId);
+      const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
       if(proceso){
         if(!proceso.customEvents) proceso.customEvents = [];
         
@@ -6913,7 +6913,7 @@ function bindContentEvents(){
       if(!editingEventId) return;
       
       if(confirm('¿Estás seguro de eliminar este evento?')){
-        const proceso = procesos.find(p => p.id === selectedProcessId);
+        const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
         if(proceso && proceso.customEvents){
           proceso.customEvents = proceso.customEvents.filter(e => e.id !== editingEventId);
           saveProcesos();
@@ -6936,7 +6936,7 @@ function bindContentEvents(){
         return;
       }
       
-      const proceso = procesos.find(p => p.id === selectedProcessId);
+      const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
       if(proceso){
         if(!proceso.notasAbogado) proceso.notasAbogado = [];
         
@@ -6956,7 +6956,7 @@ function bindContentEvents(){
   document.querySelectorAll('.edit-note').forEach(btn => {
     btn.addEventListener('click', () => {
       const noteId = btn.dataset.noteId;
-      const proceso = procesos.find(p => p.id === selectedProcessId);
+      const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
       if(proceso && proceso.notasAbogado){
         const nota = proceso.notasAbogado.find(n => n.id === noteId);
         if(nota){
@@ -6977,7 +6977,7 @@ function bindContentEvents(){
     btn.addEventListener('click', () => {
       const noteId = btn.dataset.noteId;
       if(confirm('¿Estás seguro de eliminar esta anotación?')){
-        const proceso = procesos.find(p => p.id === selectedProcessId);
+        const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
         if(proceso && proceso.notasAbogado){
           proceso.notasAbogado = proceso.notasAbogado.filter(n => n.id !== noteId);
           saveProcesos();
@@ -7011,7 +7011,7 @@ function bindContentEvents(){
   document.querySelectorAll('.edit-apoderado').forEach(btn => {
     btn.addEventListener('click', () => {
       const apId = btn.dataset.id;
-      const proceso = procesos.find(p => p.id === selectedProcessId);
+      const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
       if(proceso && proceso.apoderados){
         const ap = proceso.apoderados.find(a => a.id === apId);
         if(ap){
@@ -7034,7 +7034,7 @@ function bindContentEvents(){
     btn.addEventListener('click', () => {
       const apId = btn.dataset.id;
       if(confirm('¿Eliminar este apoderado?')){
-        const proceso = procesos.find(p => p.id === selectedProcessId);
+        const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
         if(proceso && proceso.apoderados){
           proceso.apoderados = proceso.apoderados.filter(a => a.id !== apId);
           saveProcesos();
@@ -7069,7 +7069,7 @@ function bindContentEvents(){
         return;
       }
       
-      const proceso = procesos.find(p => p.id === selectedProcessId);
+      const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
       if(proceso){
         if(!proceso.apoderados) proceso.apoderados = [];
         
@@ -7105,7 +7105,7 @@ function bindContentEvents(){
   if(btnDeleteApoderado){
     btnDeleteApoderado.addEventListener('click', () => {
       if(editingApoderadoId && confirm('¿Eliminar este apoderado?')){
-        const proceso = procesos.find(p => p.id === selectedProcessId);
+        const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
         if(proceso && proceso.apoderados){
           proceso.apoderados = proceso.apoderados.filter(a => a.id !== editingApoderadoId);
           saveProcesos();
@@ -7139,7 +7139,7 @@ function bindContentEvents(){
   document.querySelectorAll('.edit-cliente-proceso').forEach(btn => {
     btn.addEventListener('click', () => {
       const clId = btn.dataset.id;
-      const proceso = procesos.find(p => p.id === selectedProcessId);
+      const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
       if(proceso && proceso.clientesProceso){
         const cl = proceso.clientesProceso.find(c => c.id === clId);
         if(cl){
@@ -7161,7 +7161,7 @@ function bindContentEvents(){
     btn.addEventListener('click', () => {
       const clId = btn.dataset.id;
       if(confirm('¿Eliminar este cliente?')){
-        const proceso = procesos.find(p => p.id === selectedProcessId);
+        const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
         if(proceso && proceso.clientesProceso){
           proceso.clientesProceso = proceso.clientesProceso.filter(c => c.id !== clId);
           saveProcesos();
@@ -7196,7 +7196,7 @@ function bindContentEvents(){
         return;
       }
       
-      const proceso = procesos.find(p => p.id === selectedProcessId);
+      const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
       if(proceso){
         if(!proceso.clientesProceso) proceso.clientesProceso = [];
         
@@ -7231,7 +7231,7 @@ function bindContentEvents(){
   if(btnDeleteClienteProceso){
     btnDeleteClienteProceso.addEventListener('click', () => {
       if(editingClienteProcesoId && confirm('¿Eliminar este cliente?')){
-        const proceso = procesos.find(p => p.id === selectedProcessId);
+        const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
         if(proceso && proceso.clientesProceso){
           proceso.clientesProceso = proceso.clientesProceso.filter(c => c.id !== editingClienteProcesoId);
           saveProcesos();
