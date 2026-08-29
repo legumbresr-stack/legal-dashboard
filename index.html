@@ -549,6 +549,8 @@
   }
   .dynamic-table tr:hover td{background:#f0f7ff;}
   .dynamic-table tr.selected td{background:#e3f2fd;}
+  .dynamic-table tr.emplazado-row td{background:#fffbeb;}
+  .dynamic-table tr.emplazado-row:hover td{background:#fef3c7;}
   .dynamic-table .checkbox{width:16px;height:16px;cursor:pointer;}
   
   /* Column panel */
@@ -3002,9 +3004,12 @@ function renderProcesos(){
           </thead>
           <tbody id="tableBody">
             ${displayList.map(p => `
-              <tr data-id="${p.id}" class="${p.estadoColor ? 'estado-' + p.estadoColor : ''}">
+              <tr data-id="${p.id}" class="${p.estadoColor ? 'estado-' + p.estadoColor : ''}${p.esEmplazado ? ' emplazado-row' : ''}">
                 <td><input type="checkbox" class="checkbox row-checkbox" data-id="${p.id}"></td>
-                <td data-col="radicado"><a href="#" class="radicado-link" data-id="${p.id}" style="color:var(--text);text-decoration:underline;cursor:pointer;">${p.radicado || '—'}</a></td>
+                <td data-col="radicado">
+                  <a href="#" class="radicado-link" data-id="${p.id}" style="color:var(--text);text-decoration:underline;cursor:pointer;">${p.radicado || '—'}</a>
+                  ${p.esEmplazado ? '<span style="background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;margin-left:6px;">EMPLAZADO</span>' : ''}
+                </td>
                 <td data-col="demandante">${getDemandante(p.notas)}</td>
                 <td data-col="demandado">${getDemandado(p.notas)}</td>
                 <td data-col="despacho">${p.despacho || '—'}</td>
