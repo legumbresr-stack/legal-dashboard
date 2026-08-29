@@ -1457,7 +1457,7 @@ async function consultarPublicacionesDespacho(codigoDespacho, fechaInicio, fecha
   params.set('idMuni', idMuni);
   params.set('idDespacho', codigoDespacho);
   params.set('idDeptoIdCategory', idDeptoCategory);
-  params.set('profunda', 'true'); // Activar consulta profunda para obtener documentos de expediente
+  params.set('profunda', 'false'); // Desactivada temporalmente para carga rápida
   
   const proxyUrl = `/api/publicaciones?${params.toString()}`;
   
