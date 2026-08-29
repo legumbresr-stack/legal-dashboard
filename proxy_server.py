@@ -503,7 +503,10 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         id_muni = params.get('idMuni', ['08001'])[0]
         id_despacho = params.get('idDespacho', [''])[0]
         id_depto_category = params.get('idDeptoIdCategory', ['178847290'])[0]
-        consulta_profunda = params.get('profunda', ['false'])[0].lower() == 'true'
+        consulta_profunda = params.get('profunda', ['true'])[0].lower() == 'true'
+        
+        print(f'[Publicaciones] Parámetro profunda recibido: {params.get("profunda", ["NO ENVIADO"])}')
+        print(f'[Publicaciones] Consulta profunda activada: {consulta_profunda}')
         
         # Namespace del portlet
         ns = '_co_com_avanti_efectosProcesales_PublicacionesEfectosProcesalesPortletV2_INSTANCE_BIyXQFHVaYaq_'
