@@ -2322,12 +2322,12 @@ async function syncProcess(proceso){
               error: null
             });
             
-            console.log('Actuaciones cargadas:', proceso.actuaciones.length);
+            // Actuaciones y documentos cargados silenciosamente
             
             // Cargar documentos de actuaciones que los tengan
             const actuacionesConDocs = proceso.actuaciones.filter(act => act.conDocumentos === true && act.idRegActuacion);
             if(actuacionesConDocs.length > 0){
-              console.log('Cargando documentos de', actuacionesConDocs.length, 'actuaciones...');
+              // Cargar documentos silenciosamente
               let todosDocumentos = [];
               
               for(const act of actuacionesConDocs){
@@ -2348,12 +2348,12 @@ async function syncProcess(proceso){
                     }
                   }
                 } catch(docErr){
-                  console.log('Error cargando documentos de actuación:', act.idRegActuacion, docErr);
+                  // Silencioso - error cargando documentos de actuación
                 }
               }
               
               proceso.documentos = todosDocumentos;
-              console.log('Documentos cargados:', todosDocumentos.length);
+              // Documentos cargados
               
               // Record documentos sync
               proceso.syncHistory.unshift({
@@ -2389,7 +2389,7 @@ async function syncProcess(proceso){
           });
         }
       } catch(actErr){
-        console.log('Could not fetch actuaciones:', actErr);
+        // Silencioso - el error ya se guarda en syncHistory
         proceso.syncHistory.unshift({
           inicio: syncStartTime,
           origen: 'Consulta Nacional Unific',
@@ -2407,7 +2407,7 @@ async function syncProcess(proceso){
       }
     }
   } catch(e) {
-    console.error('Error syncing process:', e);
+    // Silencioso - el error ya se guarda en syncHistory
     proceso.syncHistory.unshift({
       inicio: syncStartTime,
       origen: 'Consulta Nacional Unific',
