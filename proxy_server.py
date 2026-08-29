@@ -181,11 +181,20 @@ def extraer_urls_estados(html_content):
     return urls
 
 
-def parse_detalle_estado(html_content, estado_titulo=''):
-    """Parsear la página de detalle de un Estado para extraer documentos de expedientes"""
+def parse_detalle_estado(html_content, estado_titulo='', opener=None, base_url=''):
+    """Parsear la página de detalle de un Estado para extraer documentos de expedientes.
+    Si hay paginación, intenta obtener documentos de todas las páginas."""
     documentos = []
     
     print(f'[Detalle Estado] Parseando página de detalle ({len(html_content)} bytes)...')
+    
+    # ===== DETECTAR PAGINACIÓN =====
+    # Buscar "Mostrando el intervalo X - Y de Z resultados" o enlaces de paginación
+    total_docs_match = re.search(r'de\s+(\d+)\s+resultados', html_content, re.IGNORECASE)
+    total_documentos = int(total_docs_match.group(1)) if total_docs_match else 0
+    
+    if total_documentos > 0:
+        print(f'[Detalle Estado] Total documentos en estado: {total_documentos}')
     
     # ===== BUSCAR EN LA TABLA "Documentos de la publicación" =====
     # La tabla tiene columnas: Nombre del Documento | Fecha Incorporación
@@ -618,8 +627,55 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                                 if titulo_match:
                                     titulo_estado = titulo_match.group(1).strip()
                                 
-                                # Parsear documentos de expediente del detalle
+                                # Parsear documentos de expediente del detalle (primera página)
                                 docs_estado = parse_detalle_estado(html_detalle, titulo_estado)
+                                
+                                # ===== PAGINACIÓN: Buscar y consultar páginas adicionales =====
+                                # Buscar total de resultados
+                                total_match = re.search(r'de\s+(\d+)\s+resultados', html_detalle, re.IGNORECASE)
+                                if total_match:
+                                    total_docs = int(total_match.group(1))
+                                    docs_por_pagina = 10  # Default de la Rama Judicial
+                                    paginas_totales = (total_docs + docs_por_pagina - 1) // docs_por_pagina
+                                    
+                                    if paginas_totales > 1:
+                                        print(f'[Detalle Estado] Detectada paginación: {total_docs} documentos en {paginas_totales} páginas')
+                                        
+                                        # Buscar enlaces de paginación (páginas 2, 3, etc.)
+                                        # Los enlaces suelen tener delta=X donde X es el offset
+                                        for pagina in range(2, min(paginas_totales + 1, 11)):  # Máximo 10 páginas
+                                            offset = (pagina - 1) * docs_por_pagina
+                                            
+                                            # Buscar el enlace de la página en el HTML
+                                            # Patrón: href="...&delta=X..." o href="...cur=X..."
+                                            pag_pattern = rf'href=["\']([^"\']*(?:delta={offset}|cur={pagina}|page={pagina})[^"\']*)["\']'
+                                            pag_match = re.search(pag_pattern, html_detalle, re.IGNORECASE)
+                                            
+                                            if pag_match:
+                                                pag_url = pag_match.group(1)
+                                                if pag_url.startswith('/'):
+                                                    pag_url = DOCS_BASE_URL + pag_url
+                                                elif not pag_url.startswith('http'):
+                                                    pag_url = DOCS_BASE_URL + '/' + pag_url
+                                                
+                                                try:
+                                                    print(f'[Detalle Estado] Consultando página {pagina} de documentos...')
+                                                    req_pag = urllib.request.Request(pag_url)
+                                                    req_pag.add_header('User-Agent', 'Mozilla/5.0')
+                                                    req_pag.add_header('Accept', 'text/html')
+                                                    req_pag.add_header('Referer', url_estado_clean)
+                                                    
+                                                    with opener.open(req_pag, timeout=30) as resp_pag:
+                                                        html_pag = resp_pag.read().decode('utf-8', errors='ignore')
+                                                        docs_pag = parse_detalle_estado(html_pag, titulo_estado)
+                                                        
+                                                        for doc in docs_pag:
+                                                            if not any(d.get('url') == doc['url'] for d in docs_estado):
+                                                                docs_estado.append(doc)
+                                                        
+                                                        print(f'[Detalle Estado] Página {pagina}: {len(docs_pag)} documentos adicionales')
+                                                except Exception as e:
+                                                    print(f'[Detalle Estado] Error en página {pagina}: {str(e)[:30]}')
                                 
                                 for doc in docs_estado:
                                     if not any(d.get('url') == doc['url'] for d in documentos_expediente):
