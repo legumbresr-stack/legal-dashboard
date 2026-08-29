@@ -551,7 +551,7 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                 init_req = urllib.request.Request(base_url)
                 init_req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
                 init_req.add_header('Accept', 'text/html,application/xhtml+xml')
-                opener.open(init_req, timeout=15)
+                opener.open(init_req, timeout=60)
                 print(f'[Publicaciones] Cookies obtenidas: {len(cookie_jar)}')
             
             # Hacer la petición inicial (búsqueda)
@@ -561,7 +561,7 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             req.add_header('Accept-Language', 'es-CO,es;q=0.9,en;q=0.8')
             req.add_header('Referer', base_url)
             
-            with opener.open(req, timeout=15) as response:
+            with opener.open(req, timeout=60) as response:
                 html_data = response.read().decode('utf-8', errors='ignore')
                 
                 print(f'[Publicaciones] HTML recibido: {len(html_data)} bytes')
@@ -609,7 +609,7 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                             req_detalle.add_header('Accept-Language', 'es-CO,es;q=0.9')
                             req_detalle.add_header('Referer', full_url)
                             
-                            with opener.open(req_detalle, timeout=20) as resp_detalle:
+                            with opener.open(req_detalle, timeout=45) as resp_detalle:
                                 html_detalle = resp_detalle.read().decode('utf-8', errors='ignore')
                                 
                                 # Extraer título del estado de la URL o del HTML
