@@ -2326,7 +2326,39 @@ async function syncProcess(proceso){
     const data = await response.json();
     
     if(data.procesos && data.procesos.length > 0){
-      const p = data.procesos[0];
+      // IMPORTANTE: Buscar el proceso específico por ID, no tomar el primero
+      // Esto evita que procesos con el mismo radicado se mezclen
+      let p = data.procesos[0]; // Default al primero
+      
+      if(proceso.id && data.procesos.length > 1){
+        // Buscar el proceso que coincida con el ID guardado
+        const found = data.procesos.find(proc => 
+          proc.idProceso === proceso.id || 
+          String(proc.idProceso) === String(proceso.id)
+        );
+        if(found){
+          p = found;
+        } else {
+          // Si no encontramos por ID, buscar por sujetosProcesales similar
+          // para no mezclar proceso principal con emplazado
+          if(proceso.esEmplazado){
+            const emplazado = data.procesos.find(proc => 
+              proc.sujetosProcesales && 
+              (proc.sujetosProcesales.toLowerCase().includes('(emplazado)') ||
+               proc.sujetosProcesales.toLowerCase().includes('emplazado)'))
+            );
+            if(emplazado) p = emplazado;
+          } else {
+            const principal = data.procesos.find(proc => 
+              !proc.sujetosProcesales || 
+              (!proc.sujetosProcesales.toLowerCase().includes('(emplazado)') &&
+               !proc.sujetosProcesales.toLowerCase().includes('emplazado)'))
+            );
+            if(principal) p = principal;
+          }
+        }
+      }
+      
       const parsed = parseDespacho(p.despacho);
       
       proceso.nombre = p.despacho || proceso.nombre;
@@ -5445,7 +5477,7 @@ function bindContentEvents(){
     
     toAdd.forEach(p => {
       const newProcess = {
-        id: uid(),
+        id: p.id, // Usar el idProceso de la API como ID
         nombre: p.despacho || 'Proceso ' + p.radicado,
         radicado: p.radicado,
         clienteId: '',
@@ -5464,7 +5496,9 @@ function bindContentEvents(){
         anotacion: '',
         fechaAgregado: now,
         lastSync: now,
-        synced: false
+        synced: false,
+        esEmplazado: p.esEmplazado || false, // Guardar si es emplazado
+        idProceso: p.id // Guardar idProceso de la API para sincronización
       };
       procesos.push(newProcess);
       recentlyAddedProcesses.push(newProcess);
