@@ -2101,26 +2101,63 @@ async function consultarRadicado(radicado){
     const data = await response.json();
     
     if(data.procesos && data.procesos.length > 0){
-      const proceso = data.procesos[0];
-      const parsed = parseDespacho(proceso.despacho);
+      // NUEVO: Separar proceso principal de procesos emplazados/relacionados
+      // El proceso principal es el que NO tiene "(Emplazado)" en sujetosProcesales
+      let procesoPrincipal = null;
+      let procesosRelacionados = [];
+      
+      for(const proc of data.procesos){
+        const esEmplazado = proc.sujetosProcesales && 
+          (proc.sujetosProcesales.toLowerCase().includes('(emplazado)') ||
+           proc.sujetosProcesales.toLowerCase().includes('emplazado)'));
+        
+        if(!esEmplazado && !procesoPrincipal){
+          procesoPrincipal = proc;
+        } else {
+          // Es emplazado o ya tenemos principal
+          procesosRelacionados.push({
+            idProceso: proc.idProceso,
+            radicado: proc.llaveProceso,
+            despacho: proc.despacho,
+            fechaProceso: proc.fechaProceso,
+            fechaUltimaActuacion: proc.fechaUltimaActuacion,
+            sujetosProcesales: proc.sujetosProcesales,
+            esEmplazado: esEmplazado,
+            tipo: esEmplazado ? 'Emplazado' : 'Relacionado'
+          });
+        }
+      }
+      
+      // Si no encontramos principal (todos son emplazados), usar el primero
+      if(!procesoPrincipal){
+        procesoPrincipal = data.procesos[0];
+        procesosRelacionados = procesosRelacionados.filter(p => p.idProceso !== procesoPrincipal.idProceso);
+      }
+      
+      const parsed = parseDespacho(procesoPrincipal.despacho);
       
       // Detectar si es proceso privado
-      const esPrivado = proceso.esPrivado === true || 
-                        (proceso.sujetosProcesales && proceso.sujetosProcesales.includes('PROCESO PRIVADO'));
+      const esPrivado = procesoPrincipal.esPrivado === true || 
+                        (procesoPrincipal.sujetosProcesales && procesoPrincipal.sujetosProcesales.includes('PROCESO PRIVADO'));
+      
+      console.log(`📋 Radicado ${normalized}: ${data.procesos.length} proceso(s), ${procesosRelacionados.length} relacionado(s)/emplazado(s)`);
       
       return {
-        id: proceso.idProceso,
-        radicado: proceso.llaveProceso,
+        id: procesoPrincipal.idProceso,
+        radicado: procesoPrincipal.llaveProceso,
         radicadoOriginal: radicado,
-        municipio: parsed.municipio || proceso.departamento,
+        municipio: parsed.municipio || procesoPrincipal.departamento,
         especialidad: parsed.especialidad,
         despacho: parsed.despacho,
-        fechaProceso: proceso.fechaProceso,
-        fechaUltimaActuacion: proceso.fechaUltimaActuacion,
-        sujetosProcesales: proceso.sujetosProcesales,
+        fechaProceso: procesoPrincipal.fechaProceso,
+        fechaUltimaActuacion: procesoPrincipal.fechaUltimaActuacion,
+        sujetosProcesales: procesoPrincipal.sujetosProcesales,
         esPrivado: esPrivado,
         status: esPrivado ? 'privado' : 'listo',
-        raw: proceso
+        raw: procesoPrincipal,
+        // NUEVO: Guardar procesos relacionados/emplazados
+        procesosRelacionados: procesosRelacionados,
+        cantidadRelacionados: procesosRelacionados.length
       };
     } else {
       return {
@@ -3248,13 +3285,64 @@ function renderProcesoDetalle(proceso){
         ${selectedProcessTab === 'notas' ? renderNotasTab(proceso) : ''}
         ${selectedProcessTab === 'documentos' ? renderDocumentosTab(proceso) : ''}
         ${selectedProcessTab === 'sincronizacion' ? renderSincronizacionTab(proceso) : ''}
-        ${selectedProcessTab === 'relacionados' ? `
-          <div class="actuaciones-empty">
-            <div class="actuaciones-empty-icon">🔗</div>
-            <div class="actuaciones-empty-title">Próximamente</div>
-            <div class="actuaciones-empty-desc">Esta sección estará disponible pronto.</div>
+        ${selectedProcessTab === 'relacionados' ? renderRelacionadosTab(proceso) : ''}
+      </div>
+    </div>
+  `;
+}
+
+function renderRelacionadosTab(proceso){
+  const relacionados = proceso.procesosRelacionados || [];
+  
+  if(relacionados.length === 0){
+    return `
+      <div class="detail-section">
+        <h3 class="detail-section-title">Procesos relacionados</h3>
+        <div class="actuaciones-empty">
+          <div class="actuaciones-empty-icon">🔗</div>
+          <div class="actuaciones-empty-title">Sin procesos relacionados</div>
+          <div class="actuaciones-empty-desc">
+            Este radicado solo tiene un proceso asociado.<br>
+            Cuando un radicado tiene múltiples procesos (ej: emplazados), aparecerán aquí.
           </div>
-        ` : ''}
+        </div>
+      </div>
+    `;
+  }
+  
+  return `
+    <div class="detail-section">
+      <h3 class="detail-section-title">Procesos relacionados</h3>
+      <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px;">
+        Este radicado tiene ${relacionados.length} proceso(s) adicional(es) vinculado(s)
+      </p>
+      
+      <div class="relacionados-list">
+        ${relacionados.map((rel, idx) => `
+          <div class="relacionado-card" style="border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;${rel.esEmplazado ? 'border-left:4px solid var(--amber-text);' : ''}">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;">
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                  <span style="font-size:18px;">${rel.esEmplazado ? '📋' : '🔗'}</span>
+                  <span style="font-weight:600;color:var(--text);">Proceso ${idx + 1}</span>
+                  ${rel.esEmplazado ? '<span style="background:var(--amber-bg);color:var(--amber-text);padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">EMPLAZADO</span>' : '<span style="background:var(--gray-bg);color:var(--gray-text);padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">RELACIONADO</span>'}
+                </div>
+                <div style="font-size:13px;color:var(--text-muted);">ID: ${rel.idProceso}</div>
+              </div>
+              <div style="text-align:right;font-size:12px;color:var(--text-muted);">
+                ${rel.fechaUltimaActuacion ? 'Última act: ' + new Date(rel.fechaUltimaActuacion).toLocaleDateString('es-CO') : ''}
+              </div>
+            </div>
+            
+            <div style="background:var(--gray-bg);border-radius:8px;padding:12px;font-size:13px;">
+              <div style="font-weight:500;color:var(--text);margin-bottom:8px;">🏛 ${rel.despacho || 'Despacho no especificado'}</div>
+              <div style="color:var(--text-muted);line-height:1.5;">
+                <strong>Sujetos procesales:</strong><br>
+                ${(rel.sujetosProcesales || 'No disponible').replace(/\|/g, '<br>').replace(/Demandante/g, '<strong>Demandante</strong>').replace(/Demandado/g, '<strong>Demandado</strong>').replace(/Defensor/g, '<strong>Defensor</strong>')}
+              </div>
+            </div>
+          </div>
+        `).join('')}
       </div>
     </div>
   `;
