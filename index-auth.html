@@ -585,7 +585,7 @@ const SUPABASE_URL = 'https://wwpupchudqdfvlgeqkjn.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_11togyKe5cbvosCsew1xmQ_hN2ms5nf';
 
 // Initialize Supabase client
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Current user state
 let currentUser = null;
@@ -594,7 +594,7 @@ let currentProfile = null;
 // ========== AUTHENTICATION ==========
 async function signInWithGoogle() {
   try {
-    const { data, error } = await supabase.auth.signInWithOAuth({
+    const { data, error } = await supabaseClient.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: window.location.origin + window.location.pathname
@@ -610,7 +610,7 @@ async function signInWithGoogle() {
 
 async function signOut() {
   try {
-    const { error } = await supabase.auth.signOut();
+    const { error } = await supabaseClient.auth.signOut();
     if (error) throw error;
     
     currentUser = null;
@@ -624,7 +624,7 @@ async function signOut() {
 
 async function checkSession() {
   try {
-    const { data: { session }, error } = await supabase.auth.getSession();
+    const { data: { session }, error } = await supabaseClient.auth.getSession();
     
     if (error) throw error;
     
@@ -642,7 +642,7 @@ async function checkSession() {
 
 async function loadUserProfile() {
   try {
-    const { data: profile, error } = await supabase
+    const { data: profile, error } = await supabaseClient
       .from('profiles')
       .select('*')
       .eq('id', currentUser.id)
@@ -654,7 +654,7 @@ async function loadUserProfile() {
       // Wait a bit and retry
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      const { data: retryProfile, error: retryError } = await supabase
+      const { data: retryProfile, error: retryError } = await supabaseClient
         .from('profiles')
         .select('*')
         .eq('id', currentUser.id)
@@ -750,7 +750,7 @@ function showView(viewName) {
 // ========== DASHBOARD ==========
 async function loadDashboard() {
   try {
-    const { data: procesos, error } = await supabase
+    const { data: procesos, error } = await supabaseClient
       .from('procesos')
       .select('*')
       .eq('user_id', currentUser.id);
@@ -778,7 +778,7 @@ async function loadProcesos() {
   container.innerHTML = '<div class="loading"><div class="spinner"></div><span>Cargando procesos...</span></div>';
   
   try {
-    const { data: procesos, error } = await supabase
+    const { data: procesos, error } = await supabaseClient
       .from('procesos')
       .select('*')
       .eq('user_id', currentUser.id)
@@ -849,7 +849,7 @@ async function saveProceso() {
   }
   
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('procesos')
       .insert({
         user_id: currentUser.id,
@@ -881,7 +881,7 @@ async function deleteProceso(id) {
   if (!confirm('¿Estás seguro de eliminar este proceso?')) return;
   
   try {
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from('procesos')
       .delete()
       .eq('id', id)
@@ -912,7 +912,7 @@ async function loadAdminData() {
   
   try {
     // Load all profiles
-    const { data: profiles, error } = await supabase
+    const { data: profiles, error } = await supabaseClient
       .from('profiles')
       .select('*')
       .order('created_at', { ascending: false });
@@ -975,7 +975,7 @@ async function loadAdminData() {
     
     for (const user of approved) {
       // Get process count for each user
-      const { count } = await supabase
+      const { count } = await supabaseClient
         .from('procesos')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id);
@@ -1015,7 +1015,7 @@ async function loadAdminData() {
 
 async function approveUser(userId) {
   try {
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from('profiles')
       .update({ is_approved: true })
       .eq('id', userId);
@@ -1036,7 +1036,7 @@ async function rejectUser(userId) {
   
   try {
     // Delete profile (user will need to register again)
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from('profiles')
       .delete()
       .eq('id', userId);
@@ -1056,7 +1056,7 @@ async function makeAdmin(userId) {
   if (!confirm('¿Hacer a este usuario administrador?')) return;
   
   try {
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from('profiles')
       .update({ role: 'admin' })
       .eq('id', userId);
@@ -1159,7 +1159,7 @@ document.querySelectorAll('.overlay').forEach(overlay => {
 });
 
 // ========== AUTH STATE LISTENER ==========
-supabase.auth.onAuthStateChange(async (event, session) => {
+supabaseClient.auth.onAuthStateChange(async (event, session) => {
   console.log('Auth state changed:', event);
   
   if (event === 'SIGNED_IN' && session) {
