@@ -2330,6 +2330,14 @@ async function syncProcess(proceso){
               // Cargar documentos silenciosamente
               let todosDocumentos = [];
               
+              // Extraer código de expediente del radicado para verificar documentos
+              const radicadoLimpio = proceso.radicado ? proceso.radicado.replace(/[-\s]/g, '') : '';
+              let codigoExpedienteProceso = '';
+              if(radicadoLimpio.length >= 11){
+                const ultimos11 = radicadoLimpio.slice(-11);
+                codigoExpedienteProceso = ultimos11.slice(0, -2); // Sin los 2 últimos
+              }
+              
               for(const act of actuacionesConDocs){
                 try {
                   const docUrl = `https://consultaprocesos.ramajudicial.gov.co:448/api/v2/Proceso/DocumentosActuacion/${act.idRegActuacion}`;
@@ -2339,11 +2347,34 @@ async function syncProcess(proceso){
                     const docs = await docResponse.json();
                     if(Array.isArray(docs) && docs.length > 0){
                       docs.forEach(doc => {
-                        todosDocumentos.push({
-                          ...doc,
-                          fechaActuacion: act.fecha,
-                          actuacion: act.actuacion
-                        });
+                        // Verificar si el documento pertenece a este proceso
+                        // Extraer código del nombre del documento si existe
+                        const nombreDoc = (doc.nombre || doc.nombreArchivo || '').toLowerCase();
+                        let perteneceAlProceso = false;
+                        
+                        // Si el documento tiene un código de expediente, verificar que coincida
+                        const matchCodigo = nombreDoc.match(/^(\d{9})/);
+                        const matchCodigoGuion = nombreDoc.match(/^(\d{4})[-_](\d{5})/);
+                        
+                        if(matchCodigo){
+                          const codigoDoc = matchCodigo[1];
+                          perteneceAlProceso = (codigoDoc === codigoExpedienteProceso);
+                        } else if(matchCodigoGuion){
+                          const codigoDoc = matchCodigoGuion[1] + matchCodigoGuion[2];
+                          perteneceAlProceso = (codigoDoc === codigoExpedienteProceso);
+                        } else {
+                          // Si el documento no tiene código de expediente en el nombre,
+                          // asumimos que pertenece al proceso (documentos genéricos de la actuación)
+                          perteneceAlProceso = true;
+                        }
+                        
+                        if(perteneceAlProceso){
+                          todosDocumentos.push({
+                            ...doc,
+                            fechaActuacion: act.fecha,
+                            actuacion: act.actuacion
+                          });
+                        }
                       });
                     }
                   }
