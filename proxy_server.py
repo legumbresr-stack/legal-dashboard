@@ -580,9 +580,10 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                 estados_consultados = 0
                 
                 if consulta_profunda and urls_detalle:
-                    # Limitar a máximo 3 estados para que sea rápido
-                    urls_a_consultar = urls_detalle[:3]
-                    print(f'[Publicaciones] Iniciando consulta profunda de {len(urls_a_consultar)} estados (de {len(urls_detalle)} encontrados)...')
+                    # Obtener límite de estados desde parámetro (default: 10, máximo: 50)
+                    max_estados = min(int(params.get('maxEstados', ['10'])[0]), 50)
+                    urls_a_consultar = urls_detalle[:max_estados]
+                    print(f'[Publicaciones] Iniciando consulta profunda de {len(urls_a_consultar)} estados (de {len(urls_detalle)} encontrados, máx configurado: {max_estados})...')
                     
                     for url_estado in urls_a_consultar:
                         try:
@@ -656,13 +657,15 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                     'documentos': docs_estados,
                     'documentosExpediente': docs_expediente_finales,
                     'estadosConsultados': estados_consultados,
+                    'estadosTotalesEncontrados': len(urls_detalle),
                     'consultaProfunda': consulta_profunda,
                     'parametros': {
                         'fechaInicio': fecha_inicio,
                         'fechaFin': fecha_fin,
                         'idDespacho': id_despacho
                     },
-                    'html_size': len(html_data)
+                    'html_size': len(html_data),
+                    'nota': f'Se consultaron {estados_consultados} de {len(urls_detalle)} estados. Usa &maxEstados=N para consultar más (máximo 50).'
                 }
                 
                 self.send_response(200)

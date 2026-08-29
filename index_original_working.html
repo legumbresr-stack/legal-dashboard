@@ -1,36 +1,13 @@
-<!-- Build: 2026-08-26-CLEAN -->
+<!-- Build: 1787665500 -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>MiRadicado - Seguimiento de Procesos</title>
+<title>Seguimiento de Procesos</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  /* Auth Screens */
-  .auth-screen{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;}
-  .auth-screen.hidden{display:none !important;}
-  .login-screen{background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);}
-  .pending-screen{background:#f8fafc;}
-  .auth-card{background:#fff;border-radius:16px;padding:48px 40px;width:100%;max-width:420px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);text-align:center;}
-  .auth-logo{width:80px;height:80px;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;font-size:36px;color:#fff;}
-  .auth-title{font-size:28px;font-weight:700;margin:0 0 8px;color:#18181b;}
-  .auth-subtitle{font-size:15px;color:#71717a;margin:0 0 32px;}
-  .google-btn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:14px 24px;border:1px solid #e4e4e7;border-radius:10px;background:#fff;font-size:15px;font-weight:500;color:#18181b;cursor:pointer;transition:all 0.2s;}
-  .google-btn:hover{background:#f8f9fa;border-color:#d1d5db;box-shadow:0 4px 12px rgba(0,0,0,0.1);}
-  .google-btn img{width:20px;height:20px;}
-  .pending-icon{width:80px;height:80px;background:#fef9ec;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;font-size:40px;}
-  .pending-email{display:inline-block;padding:8px 16px;background:#f4f4f5;border-radius:8px;font-size:14px;margin-bottom:24px;}
-  .pending-actions{display:flex;gap:12px;justify-content:center;}
-  .btn-secondary{padding:12px 24px;border:1px solid #e4e4e7;border-radius:8px;background:#fff;font-size:14px;font-weight:500;cursor:pointer;}
-  .btn-secondary:hover{background:#f5f5f5;}
-  .app.auth-hidden{display:none !important;}
-  .logout-btn{display:flex;align-items:center;gap:8px;padding:8px 12px;margin-top:8px;border:1px solid #e4e4e7;border-radius:8px;background:#fff;font-size:13px;color:#71717a;cursor:pointer;width:100%;}
-  .logout-btn:hover{background:#fef2f2;color:#dc2626;border-color:#fecaca;}
-  .nav-admin{display:none;}
-  .nav-admin.visible{display:flex;}
   :root{
     --bg:#ffffff;
     --sidebar-bg:#fafafa;
@@ -549,8 +526,6 @@
   }
   .dynamic-table tr:hover td{background:#f0f7ff;}
   .dynamic-table tr.selected td{background:#e3f2fd;}
-  .dynamic-table tr.emplazado-row td{background:#fffbeb;}
-  .dynamic-table tr.emplazado-row:hover td{background:#fef3c7;}
   .dynamic-table .checkbox{width:16px;height:16px;cursor:pointer;}
   
   /* Column panel */
@@ -1143,35 +1118,7 @@
 </style>
 </head>
 <body>
-
-<!-- Auth: Login Screen -->
-<div id="loginScreen" class="auth-screen login-screen hidden">
-  <div class="auth-card">
-    <div class="auth-logo">⚖</div>
-    <h1 class="auth-title">MiRadicado</h1>
-    <p class="auth-subtitle">Sistema de Seguimiento de Procesos Judiciales</p>
-    <button id="googleLoginBtn" class="google-btn">
-      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
-      Continuar con Google
-    </button>
-  </div>
-</div>
-
-<!-- Auth: Pending Approval Screen -->
-<div id="pendingScreen" class="auth-screen pending-screen hidden">
-  <div class="auth-card">
-    <div class="pending-icon">⏳</div>
-    <h1 class="auth-title">Cuenta pendiente</h1>
-    <p class="auth-subtitle">Tu cuenta está esperando aprobación del administrador</p>
-    <div id="pendingEmail" class="pending-email">usuario@email.com</div>
-    <div class="pending-actions">
-      <button id="checkStatusBtn" class="btn-secondary">Verificar estado</button>
-      <button id="logoutPendingBtn" class="btn-secondary">Cerrar sesión</button>
-    </div>
-  </div>
-</div>
-
-<div class="app auth-hidden">
+<div class="app">
   <aside class="sidebar">
     <div class="brand">
       <div class="brand-avatar">A</div>
@@ -1188,7 +1135,6 @@
       <button class="nav-item" data-view="clientes"><span class="nav-icon">👤</span> Clientes <span style="margin-left:auto;font-size:12px;color:var(--text-muted);">+</span></button>
       <button class="nav-item" data-view="despachos"><span class="nav-icon">🏛</span> Despachos</button>
       <button class="nav-item" data-view="configuraciones"><span class="nav-icon">⚙</span> Configuraciones <span style="margin-left:auto;font-size:10px;color:var(--text-muted);">›</span></button>
-      <button class="nav-item nav-admin" id="navAdmin" data-view="admin"><span class="nav-icon">👑</span> Administración</button>
     </nav>
     <div class="sidebar-footer">
       <div class="trial-box">
@@ -1206,15 +1152,14 @@
         <div class="add-card-desc">Mantén el seguimiento activo cuando termine tu prueba — sin pausas ni vencimientos perdidos.</div>
         <button class="add-card-btn">💳 Agregar tarjeta</button>
       </div>
-      <div class="user-row" id="userInfo">
-        <div class="user-avatar" id="userAvatar">A</div>
+      <div class="user-row">
+        <div class="user-avatar">A</div>
         <div>
-          <div class="user-name" id="userName">Usuario</div>
-          <div class="user-email" id="userEmail">usuario@email.com</div>
+          <div class="user-name">Alain Prieto Marquez</div>
+          <div class="user-email">alp.marquez@gmail.com</div>
         </div>
         <span style="margin-left:auto;color:var(--text-muted);cursor:pointer;">⌃</span>
       </div>
-      <button id="logoutBtn" class="logout-btn">🚪 Cerrar sesión</button>
     </div>
   </aside>
   <div class="main">
@@ -1420,14 +1365,11 @@ async function syncPublicacionesProcesales(){
   let nuevasPublicaciones = 0;
   let documentosExpedienteVinculados = 0;
   const hoy = new Date();
-  const hace30dias = new Date(hoy);
-  hace30dias.setDate(hace30dias.getDate() - 30); // Ampliar a 30 días para capturar más documentos
+  const hace7dias = new Date(hoy);
+  hace7dias.setDate(hace7dias.getDate() - 7);
   
-  // Usar año actual del sistema
-  const fechaInicio = hace30dias.toISOString().split('T')[0];
+  const fechaInicio = hace7dias.toISOString().split('T')[0];
   const fechaFin = hoy.toISOString().split('T')[0];
-  
-  console.log(`📅 Rango de búsqueda: ${fechaInicio} a ${fechaFin}`);
   
   for(const despacho of despachos){
     try {
@@ -1516,7 +1458,6 @@ async function consultarPublicacionesDespacho(codigoDespacho, fechaInicio, fecha
   params.set('idDespacho', codigoDespacho);
   params.set('idDeptoIdCategory', idDeptoCategory);
   params.set('profunda', 'true'); // Activar consulta profunda para obtener documentos de expediente
-  params.set('maxEstados', '15'); // Consultar hasta 15 estados para encontrar más documentos
   
   const proxyUrl = `/api/publicaciones?${params.toString()}`;
   
@@ -1530,14 +1471,11 @@ async function consultarPublicacionesDespacho(codigoDespacho, fechaInicio, fecha
 }
 
 // Vincular documento a proceso por número de radicado
-// MODIFICADO: Ahora vincula a TODOS los procesos que coincidan (para radicados con múltiples procesos)
 function vincularDocumentoAProceso(doc){
   if(!doc || !doc.nombre) return null;
   
   // Si el documento ya tiene el código de expediente extraído por el servidor
   const codigoExpedienteDoc = doc.codigoExpediente || '';
-  
-  let procesosVinculados = [];
   
   // Buscar en cada proceso
   for(let i = 0; i < procesos.length; i++){
@@ -1547,7 +1485,7 @@ function vincularDocumentoAProceso(doc){
     // Normalizar el radicado del proceso (quitar guiones)
     const radicadoLimpio = p.radicado.replace(/[-\s]/g, '');
     
-    // Extraer código de expediente de los últimos 11 dígitos, quitando los 2 últimos
+    // NUEVO: Extraer código de expediente de los últimos 11 dígitos, quitando los 2 últimos
     // Ejemplo: 11001311002720250033800
     //          Últimos 11: 20250033800
     //          Sin últimos 2: 202500338 ← Este es el código
@@ -1610,7 +1548,7 @@ function vincularDocumentoAProceso(doc){
       if(!p.documentosPublicaciones) p.documentosPublicaciones = [];
       
       const yaExiste = p.documentosPublicaciones.some(d => d.url === doc.url || d.nombre === doc.nombre);
-      if(yaExiste) continue; // Continuar buscando otros procesos, no retornar
+      if(yaExiste) return null;
       
       // Determinar tipo de documento
       let tipoDoc = 'Documento';
@@ -1632,13 +1570,11 @@ function vincularDocumentoAProceso(doc){
       });
       
       console.log(`📎 Documento vinculado: ${doc.nombre} → ${p.radicado} (código: ${codigoExpediente}, tipo: ${tipoDoc})`);
-      procesosVinculados.push(p);
-      // NO hacer return aquí - continuar para vincular a otros procesos con mismo radicado
+      return p;
     }
   }
   
-  // Retornar el primer proceso vinculado (para compatibilidad con código existente)
-  return procesosVinculados.length > 0 ? procesosVinculados[0] : null;
+  return null;
 }
 
 // Mostrar notificación en el dashboard
@@ -1780,7 +1716,7 @@ function render(){
     });
   }
   else if(currentView==='procesoDetalle'){
-    const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
+    const proceso = procesos.find(p => p.id === selectedProcessId);
     if(proceso){
       document.getElementById('topbarTitle').innerHTML=`<span style="display:flex;align-items:center;gap:8px;">&#128188; <a href="#" class="back-to-procesos" style="color:var(--text);text-decoration:none;">Procesos</a> <span style="color:var(--text-muted);font-size:12px;">&#9656;</span> ${proceso.radicado} <span style="color:var(--text-muted);font-size:12px;">&#9656;</span> ${proceso.despacho || 'Sin despacho'}</span>`;
       el.innerHTML = renderProcesoDetalle(proceso);
@@ -1980,15 +1916,12 @@ function renderRevisarProcesos(){
           else if(p.status === 'error') estadoHtml = '<span style="color:#dc2626;font-size:12px;">Error: ' + (p.error || 'Desconocido') + '</span>';
           else estadoHtml = '<span style="color:#6b7280;font-size:12px;">' + p.status + '</span>';
           
-          // Mostrar badge de EMPLAZADO si aplica
-          const emplazadoBadge = p.esEmplazado ? '<span style="background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;margin-left:6px;">EMPLAZADO</span>' : '';
-          
           const canSelect = p.status === 'listo' || p.status === 'privado';
           
           return `
-          <tr data-id="${p.id}" style="${p.esEmplazado ? 'background:#fffbeb;' : ''}">
+          <tr data-id="${p.id}">
             <td><input type="checkbox" class="checkbox process-checkbox" data-id="${p.id}" ${selectedProcessIds.has(p.id) ? 'checked' : ''} ${!canSelect ? 'disabled' : ''}></td>
-            <td><a href="#" class="radicado-link">${p.radicado}</a>${emplazadoBadge}</td>
+            <td><a href="#" class="radicado-link">${p.radicado}</a></td>
             <td>${p.municipio || '—'}</td>
             <td>${p.especialidad || '—'}</td>
             <td>${p.despacho || '—'}</td>
@@ -2115,58 +2048,44 @@ async function consultarRadicado(radicado){
     const data = await response.json();
     
     if(data.procesos && data.procesos.length > 0){
-      // Devolver TODOS los procesos encontrados como array
-      // El usuario decidirá cuál(es) agregar
-      const resultados = [];
+      const proceso = data.procesos[0];
+      const parsed = parseDespacho(proceso.despacho);
       
-      for(const proc of data.procesos){
-        const parsed = parseDespacho(proc.despacho);
-        
-        // Detectar si es emplazado
-        const esEmplazado = proc.sujetosProcesales && 
-          (proc.sujetosProcesales.toLowerCase().includes('(emplazado)') ||
-           proc.sujetosProcesales.toLowerCase().includes('emplazado)'));
-        
-        // Detectar si es proceso privado
-        const esPrivado = proc.esPrivado === true || 
-                          (proc.sujetosProcesales && proc.sujetosProcesales.includes('PROCESO PRIVADO'));
-        
-        resultados.push({
-          id: proc.idProceso,
-          radicado: proc.llaveProceso,
-          radicadoOriginal: radicado,
-          municipio: parsed.municipio || proc.departamento,
-          especialidad: parsed.especialidad,
-          despacho: parsed.despacho,
-          fechaProceso: proc.fechaProceso,
-          fechaUltimaActuacion: proc.fechaUltimaActuacion,
-          sujetosProcesales: proc.sujetosProcesales,
-          esPrivado: esPrivado,
-          esEmplazado: esEmplazado,
-          status: esPrivado ? 'privado' : 'listo',
-          raw: proc
-        });
-      }
+      // Detectar si es proceso privado
+      const esPrivado = proceso.esPrivado === true || 
+                        (proceso.sujetosProcesales && proceso.sujetosProcesales.includes('PROCESO PRIVADO'));
       
-      console.log(`📋 Radicado ${normalized}: ${resultados.length} proceso(s) encontrado(s)`);
-      return resultados;
+      return {
+        id: proceso.idProceso,
+        radicado: proceso.llaveProceso,
+        radicadoOriginal: radicado,
+        municipio: parsed.municipio || proceso.departamento,
+        especialidad: parsed.especialidad,
+        despacho: parsed.despacho,
+        fechaProceso: proceso.fechaProceso,
+        fechaUltimaActuacion: proceso.fechaUltimaActuacion,
+        sujetosProcesales: proceso.sujetosProcesales,
+        esPrivado: esPrivado,
+        status: esPrivado ? 'privado' : 'listo',
+        raw: proceso
+      };
     } else {
-      return [{
+      return {
         id: 'err_' + Date.now() + '_' + Math.random(),
         radicado: radicado,
         radicadoOriginal: radicado,
         status: 'error',
         error: 'No encontrado'
-      }];
+      };
     }
   } catch(error) {
-    return [{
+    return {
       id: 'err_' + Date.now() + '_' + Math.random(),
       radicado: radicado,
       radicadoOriginal: radicado,
       status: 'error',
       error: error.message
-    }];
+    };
   }
 }
 
@@ -2178,26 +2097,22 @@ async function consultarRadicados(radicadosList){
   // Show loading
   document.getElementById('content').innerHTML = renderLoadingProcesos();
   
-  // Consult each radicado - ahora devuelve array de procesos
+  // Consult each radicado
   for(const radicado of radicadosList){
-    const results = await consultarRadicado(radicado);
+    const result = await consultarRadicado(radicado);
+    consultedProcesses.push(result);
     
-    // Agregar todos los procesos encontrados
-    for(const result of results){
-      consultedProcesses.push(result);
-      
-      // Auto-select solo si es "listo" y NO es emplazado
-      // Los emplazados no se auto-seleccionan para que el usuario decida
-      if(result.status === 'listo' && !result.esEmplazado){
-        selectedProcessIds.add(result.id);
-      }
+    // Auto-select if listo (privados no se auto-seleccionan para que el usuario decida)
+    if(result.status === 'listo'){
+      selectedProcessIds.add(result.id);
     }
+    // Los procesos privados no se auto-seleccionan - el usuario debe seleccionarlos manualmente
   }
   
   // Check for duplicates (already in procesos array)
   consultedProcesses.forEach(cp => {
     if(cp.status === 'listo'){
-      const exists = procesos.find(p => p.radicado === cp.radicado && p.id === cp.id);
+      const exists = procesos.find(p => p.radicado === cp.radicado);
       if(exists){
         cp.status = 'duplicado';
         selectedProcessIds.delete(cp.id);
@@ -2335,39 +2250,7 @@ async function syncProcess(proceso){
     const data = await response.json();
     
     if(data.procesos && data.procesos.length > 0){
-      // IMPORTANTE: Buscar el proceso específico por ID, no tomar el primero
-      // Esto evita que procesos con el mismo radicado se mezclen
-      let p = data.procesos[0]; // Default al primero
-      
-      if(proceso.id && data.procesos.length > 1){
-        // Buscar el proceso que coincida con el ID guardado
-        const found = data.procesos.find(proc => 
-          proc.idProceso === proceso.id || 
-          String(proc.idProceso) === String(proceso.id)
-        );
-        if(found){
-          p = found;
-        } else {
-          // Si no encontramos por ID, buscar por sujetosProcesales similar
-          // para no mezclar proceso principal con emplazado
-          if(proceso.esEmplazado){
-            const emplazado = data.procesos.find(proc => 
-              proc.sujetosProcesales && 
-              (proc.sujetosProcesales.toLowerCase().includes('(emplazado)') ||
-               proc.sujetosProcesales.toLowerCase().includes('emplazado)'))
-            );
-            if(emplazado) p = emplazado;
-          } else {
-            const principal = data.procesos.find(proc => 
-              !proc.sujetosProcesales || 
-              (!proc.sujetosProcesales.toLowerCase().includes('(emplazado)') &&
-               !proc.sujetosProcesales.toLowerCase().includes('emplazado)'))
-            );
-            if(principal) p = principal;
-          }
-        }
-      }
-      
+      const p = data.procesos[0];
       const parsed = parseDespacho(p.despacho);
       
       proceso.nombre = p.despacho || proceso.nombre;
@@ -3045,12 +2928,9 @@ function renderProcesos(){
           </thead>
           <tbody id="tableBody">
             ${displayList.map(p => `
-              <tr data-id="${p.id}" class="${p.estadoColor ? 'estado-' + p.estadoColor : ''}${p.esEmplazado ? ' emplazado-row' : ''}">
+              <tr data-id="${p.id}" class="${p.estadoColor ? 'estado-' + p.estadoColor : ''}">
                 <td><input type="checkbox" class="checkbox row-checkbox" data-id="${p.id}"></td>
-                <td data-col="radicado">
-                  <a href="#" class="radicado-link" data-id="${p.id}" style="color:var(--text);text-decoration:underline;cursor:pointer;">${p.radicado || '—'}</a>
-                  ${p.esEmplazado ? '<span style="background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;margin-left:6px;">EMPLAZADO</span>' : ''}
-                </td>
+                <td data-col="radicado"><a href="#" class="radicado-link" data-id="${p.id}" style="color:var(--text);text-decoration:underline;cursor:pointer;">${p.radicado || '—'}</a></td>
                 <td data-col="demandante">${getDemandante(p.notas)}</td>
                 <td data-col="demandado">${getDemandado(p.notas)}</td>
                 <td data-col="despacho">${p.despacho || '—'}</td>
@@ -3315,66 +3195,13 @@ function renderProcesoDetalle(proceso){
         ${selectedProcessTab === 'notas' ? renderNotasTab(proceso) : ''}
         ${selectedProcessTab === 'documentos' ? renderDocumentosTab(proceso) : ''}
         ${selectedProcessTab === 'sincronizacion' ? renderSincronizacionTab(proceso) : ''}
-        ${selectedProcessTab === 'relacionados' ? renderRelacionadosTab(proceso) : ''}
-      </div>
-    </div>
-  `;
-}
-
-function renderRelacionadosTab(proceso){
-  // Buscar otros procesos con el mismo radicado que también fueron agregados
-  const mismosRadicado = procesos.filter(p => 
-    p.radicado === proceso.radicado && p.id !== proceso.id
-  );
-  
-  if(mismosRadicado.length === 0){
-    return `
-      <div class="detail-section">
-        <h3 class="detail-section-title">Procesos relacionados</h3>
-        <div class="actuaciones-empty">
-          <div class="actuaciones-empty-icon">🔗</div>
-          <div class="actuaciones-empty-title">Sin procesos relacionados</div>
-          <div class="actuaciones-empty-desc">
-            No hay otros procesos con el mismo radicado agregados.<br>
-            Si el radicado tiene procesos emplazados, aparecerán aquí cuando los agregues.
+        ${selectedProcessTab === 'relacionados' ? `
+          <div class="actuaciones-empty">
+            <div class="actuaciones-empty-icon">🔗</div>
+            <div class="actuaciones-empty-title">Próximamente</div>
+            <div class="actuaciones-empty-desc">Esta sección estará disponible pronto.</div>
           </div>
-        </div>
-      </div>
-    `;
-  }
-  
-  return `
-    <div class="detail-section">
-      <h3 class="detail-section-title">Procesos relacionados</h3>
-      <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px;">
-        Hay ${mismosRadicado.length} proceso(s) con el mismo radicado agregado(s)
-      </p>
-      
-      <div class="relacionados-list">
-        ${mismosRadicado.map((rel, idx) => `
-          <div class="relacionado-card" style="border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;cursor:pointer;${rel.esEmplazado ? 'border-left:4px solid var(--amber-text);' : ''}" onclick="viewProcess('${rel.id}')">
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;">
-              <div>
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-                  <span style="font-size:18px;">${rel.esEmplazado ? '📋' : '🔗'}</span>
-                  <span style="font-weight:600;color:var(--text);">${rel.nombre || 'Proceso ' + (idx + 1)}</span>
-                  ${rel.esEmplazado ? '<span style="background:var(--amber-bg);color:var(--amber-text);padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">EMPLAZADO</span>' : ''}
-                </div>
-                <div style="font-size:13px;color:var(--text-muted);">ID: ${rel.id}</div>
-              </div>
-              <div style="text-align:right;font-size:12px;color:var(--text-muted);">
-                ${rel.fechaUltimaActuacion ? 'Última act: ' + new Date(rel.fechaUltimaActuacion).toLocaleDateString('es-CO') : ''}
-              </div>
-            </div>
-            
-            <div style="background:var(--gray-bg);border-radius:8px;padding:12px;font-size:13px;">
-              <div style="font-weight:500;color:var(--text);margin-bottom:8px;">🏛 ${rel.despacho || 'Despacho no especificado'}</div>
-            </div>
-            <div style="margin-top:8px;text-align:right;">
-              <span style="color:var(--accent);font-size:13px;">Ver proceso →</span>
-            </div>
-          </div>
-        `).join('')}
+        ` : ''}
       </div>
     </div>
   `;
@@ -5486,7 +5313,7 @@ function bindContentEvents(){
     
     toAdd.forEach(p => {
       const newProcess = {
-        id: p.id, // Usar el idProceso de la API como ID
+        id: uid(),
         nombre: p.despacho || 'Proceso ' + p.radicado,
         radicado: p.radicado,
         clienteId: '',
@@ -5505,9 +5332,7 @@ function bindContentEvents(){
         anotacion: '',
         fechaAgregado: now,
         lastSync: now,
-        synced: false,
-        esEmplazado: p.esEmplazado || false, // Guardar si es emplazado
-        idProceso: p.id // Guardar idProceso de la API para sincronización
+        synced: false
       };
       procesos.push(newProcess);
       recentlyAddedProcesses.push(newProcess);
@@ -6637,7 +6462,7 @@ function bindContentEvents(){
   const btnSyncManual = document.getElementById('btnSyncManual');
   if(btnSyncManual){
     btnSyncManual.addEventListener('click', async () => {
-      const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
+      const proceso = procesos.find(p => p.id === selectedProcessId);
       if(proceso){
         btnSyncManual.disabled = true;
         btnSyncManual.textContent = '🔄 Sincronizando...';
@@ -6646,7 +6471,7 @@ function bindContentEvents(){
         const updated = await syncProcess(proceso);
         updated.fechaAgregado = fechaAgregadoOriginal;
         
-        const idx = procesos.findIndex(p => String(p.id) === String(selectedProcessId));
+        const idx = procesos.findIndex(p => p.id === selectedProcessId);
         if(idx !== -1){
           procesos[idx] = updated;
         }
@@ -6724,7 +6549,7 @@ function bindContentEvents(){
   const btnSyncActuaciones = document.getElementById('btnSyncActuaciones');
   if(btnSyncActuaciones){
     btnSyncActuaciones.addEventListener('click', async () => {
-      const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
+      const proceso = procesos.find(p => p.id === selectedProcessId);
       if(proceso){
         btnSyncActuaciones.disabled = true;
         btnSyncActuaciones.textContent = '🔄 Cargando...';
@@ -6733,7 +6558,7 @@ function bindContentEvents(){
         const updated = await syncProcess(proceso);
         updated.fechaAgregado = fechaAgregadoOriginal;
         
-        const idx = procesos.findIndex(p => String(p.id) === String(selectedProcessId));
+        const idx = procesos.findIndex(p => p.id === selectedProcessId);
         if(idx !== -1){
           procesos[idx] = updated;
         }
@@ -6765,13 +6590,13 @@ function bindContentEvents(){
   if(syncActuacionesLink){
     syncActuacionesLink.addEventListener('click', async (e) => {
       e.preventDefault();
-      const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
+      const proceso = procesos.find(p => p.id === selectedProcessId);
       if(proceso){
         const fechaAgregadoOriginal = proceso.fechaAgregado;
         const updated = await syncProcess(proceso);
         updated.fechaAgregado = fechaAgregadoOriginal;
         
-        const idx = procesos.findIndex(p => String(p.id) === String(selectedProcessId));
+        const idx = procesos.findIndex(p => p.id === selectedProcessId);
         if(idx !== -1){
           procesos[idx] = updated;
         }
@@ -6826,7 +6651,7 @@ function bindContentEvents(){
     ev.addEventListener('click', (e) => {
       e.stopPropagation();
       const eventId = ev.dataset.eventId;
-      const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
+      const proceso = procesos.find(p => p.id === selectedProcessId);
       if(proceso && proceso.customEvents){
         const event = proceso.customEvents.find(e => e.id === eventId);
         if(event){
@@ -6882,7 +6707,7 @@ function bindContentEvents(){
         return;
       }
       
-      const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
+      const proceso = procesos.find(p => p.id === selectedProcessId);
       if(proceso){
         if(!proceso.customEvents) proceso.customEvents = [];
         
@@ -6922,7 +6747,7 @@ function bindContentEvents(){
       if(!editingEventId) return;
       
       if(confirm('¿Estás seguro de eliminar este evento?')){
-        const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
+        const proceso = procesos.find(p => p.id === selectedProcessId);
         if(proceso && proceso.customEvents){
           proceso.customEvents = proceso.customEvents.filter(e => e.id !== editingEventId);
           saveProcesos();
@@ -6945,7 +6770,7 @@ function bindContentEvents(){
         return;
       }
       
-      const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
+      const proceso = procesos.find(p => p.id === selectedProcessId);
       if(proceso){
         if(!proceso.notasAbogado) proceso.notasAbogado = [];
         
@@ -6965,7 +6790,7 @@ function bindContentEvents(){
   document.querySelectorAll('.edit-note').forEach(btn => {
     btn.addEventListener('click', () => {
       const noteId = btn.dataset.noteId;
-      const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
+      const proceso = procesos.find(p => p.id === selectedProcessId);
       if(proceso && proceso.notasAbogado){
         const nota = proceso.notasAbogado.find(n => n.id === noteId);
         if(nota){
@@ -6986,7 +6811,7 @@ function bindContentEvents(){
     btn.addEventListener('click', () => {
       const noteId = btn.dataset.noteId;
       if(confirm('¿Estás seguro de eliminar esta anotación?')){
-        const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
+        const proceso = procesos.find(p => p.id === selectedProcessId);
         if(proceso && proceso.notasAbogado){
           proceso.notasAbogado = proceso.notasAbogado.filter(n => n.id !== noteId);
           saveProcesos();
@@ -7020,7 +6845,7 @@ function bindContentEvents(){
   document.querySelectorAll('.edit-apoderado').forEach(btn => {
     btn.addEventListener('click', () => {
       const apId = btn.dataset.id;
-      const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
+      const proceso = procesos.find(p => p.id === selectedProcessId);
       if(proceso && proceso.apoderados){
         const ap = proceso.apoderados.find(a => a.id === apId);
         if(ap){
@@ -7043,7 +6868,7 @@ function bindContentEvents(){
     btn.addEventListener('click', () => {
       const apId = btn.dataset.id;
       if(confirm('¿Eliminar este apoderado?')){
-        const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
+        const proceso = procesos.find(p => p.id === selectedProcessId);
         if(proceso && proceso.apoderados){
           proceso.apoderados = proceso.apoderados.filter(a => a.id !== apId);
           saveProcesos();
@@ -7078,7 +6903,7 @@ function bindContentEvents(){
         return;
       }
       
-      const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
+      const proceso = procesos.find(p => p.id === selectedProcessId);
       if(proceso){
         if(!proceso.apoderados) proceso.apoderados = [];
         
@@ -7114,7 +6939,7 @@ function bindContentEvents(){
   if(btnDeleteApoderado){
     btnDeleteApoderado.addEventListener('click', () => {
       if(editingApoderadoId && confirm('¿Eliminar este apoderado?')){
-        const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
+        const proceso = procesos.find(p => p.id === selectedProcessId);
         if(proceso && proceso.apoderados){
           proceso.apoderados = proceso.apoderados.filter(a => a.id !== editingApoderadoId);
           saveProcesos();
@@ -7148,7 +6973,7 @@ function bindContentEvents(){
   document.querySelectorAll('.edit-cliente-proceso').forEach(btn => {
     btn.addEventListener('click', () => {
       const clId = btn.dataset.id;
-      const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
+      const proceso = procesos.find(p => p.id === selectedProcessId);
       if(proceso && proceso.clientesProceso){
         const cl = proceso.clientesProceso.find(c => c.id === clId);
         if(cl){
@@ -7170,7 +6995,7 @@ function bindContentEvents(){
     btn.addEventListener('click', () => {
       const clId = btn.dataset.id;
       if(confirm('¿Eliminar este cliente?')){
-        const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
+        const proceso = procesos.find(p => p.id === selectedProcessId);
         if(proceso && proceso.clientesProceso){
           proceso.clientesProceso = proceso.clientesProceso.filter(c => c.id !== clId);
           saveProcesos();
@@ -7205,7 +7030,7 @@ function bindContentEvents(){
         return;
       }
       
-      const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
+      const proceso = procesos.find(p => p.id === selectedProcessId);
       if(proceso){
         if(!proceso.clientesProceso) proceso.clientesProceso = [];
         
@@ -7240,7 +7065,7 @@ function bindContentEvents(){
   if(btnDeleteClienteProceso){
     btnDeleteClienteProceso.addEventListener('click', () => {
       if(editingClienteProcesoId && confirm('¿Eliminar este cliente?')){
-        const proceso = procesos.find(p => String(p.id) === String(selectedProcessId));
+        const proceso = procesos.find(p => p.id === selectedProcessId);
         if(proceso && proceso.clientesProceso){
           proceso.clientesProceso = proceso.clientesProceso.filter(c => c.id !== editingClienteProcesoId);
           saveProcesos();
@@ -7779,166 +7604,7 @@ document.getElementById('modalSave').addEventListener('click', ()=>{
   else if(modalType==='evento') saveEventoModal();
 });
 
-// ============================================
-// AUTH - Supabase Google OAuth
-// ============================================
-const SUPABASE_URL = 'https://wwpupchudqdfvlgeqkjn.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3cHVwY2h1ZHFkZnZsZ2Vxa2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc5NzA4NzcsImV4cCI6MjEwMzU0Njg3N30.okMhP5FZqkHq_T-b9QzjOq-zYZZd79TIHRj-ombQQYU';
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-let currentUser = null;
-let currentProfile = null;
-
-async function loadUserProfile(userId) {
-  try {
-    const { data, error } = await supabaseClient.from('profiles').select('*').eq('id', userId).single();
-    if (error) return null;
-    return data;
-  } catch (e) { return null; }
-}
-
-async function createUserProfile(user) {
-  try {
-    const profileData = {
-      id: user.id,
-      email: user.email,
-      full_name: user.user_metadata?.full_name || user.email.split('@')[0],
-      avatar_url: user.user_metadata?.avatar_url || null,
-      role: 'pending',
-      created_at: new Date().toISOString()
-    };
-    const { data, error } = await supabaseClient.from('profiles').insert([profileData]).select().single();
-    if (error) return null;
-    return data;
-  } catch (e) { return null; }
-}
-
-function updateUserUI(profile) {
-  if (!profile) return;
-  const userName = document.getElementById('userName');
-  const userEmail = document.getElementById('userEmail');
-  const userAvatar = document.getElementById('userAvatar');
-  const navAdmin = document.getElementById('navAdmin');
-  if (userName) userName.textContent = profile.full_name || 'Usuario';
-  if (userEmail) userEmail.textContent = profile.email || '';
-  if (userAvatar) {
-    if (profile.avatar_url) {
-      userAvatar.innerHTML = '<img src="'+profile.avatar_url+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">';
-    } else {
-      userAvatar.textContent = (profile.full_name || 'U')[0].toUpperCase();
-    }
-  }
-  if (navAdmin) {
-    navAdmin.classList.toggle('visible', profile.role === 'admin');
-  }
-}
-
-function showLoginScreen() {
-  document.getElementById('loginScreen').classList.remove('hidden');
-  document.getElementById('pendingScreen').classList.add('hidden');
-  document.querySelector('.app').classList.add('auth-hidden');
-}
-
-function showPendingScreen(email) {
-  document.getElementById('loginScreen').classList.add('hidden');
-  document.getElementById('pendingScreen').classList.remove('hidden');
-  document.getElementById('pendingEmail').textContent = email;
-  document.querySelector('.app').classList.add('auth-hidden');
-}
-
-function showApp() {
-  document.getElementById('loginScreen').classList.add('hidden');
-  document.getElementById('pendingScreen').classList.add('hidden');
-  document.querySelector('.app').classList.remove('auth-hidden');
-}
-
-async function checkSession() {
-  try {
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    if (!session) { showLoginScreen(); return; }
-    currentUser = session.user;
-    let profile = await loadUserProfile(currentUser.id);
-    if (!profile) profile = await createUserProfile(currentUser);
-    currentProfile = profile;
-    if (!profile || profile.role === 'pending') { showPendingScreen(currentUser.email); return; }
-    updateUserUI(profile);
-    showApp();
-    loadData();
-  } catch (error) { showLoginScreen(); }
-}
-
-async function signInWithGoogle() {
-  try {
-    await supabaseClient.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin + window.location.pathname }
-    });
-  } catch (e) { alert('Error al iniciar sesión'); }
-}
-
-async function signOut() {
-  await supabaseClient.auth.signOut();
-  currentUser = null;
-  currentProfile = null;
-  showLoginScreen();
-}
-
-async function checkStatus() {
-  if (!currentUser) return;
-  const profile = await loadUserProfile(currentUser.id);
-  if (profile && profile.role !== 'pending') {
-    currentProfile = profile;
-    updateUserUI(profile);
-    showApp();
-    loadData();
-  } else {
-    alert('Tu cuenta aún está pendiente de aprobación.');
-  }
-}
-
-supabaseClient.auth.onAuthStateChange((event, session) => {
-  if (event === 'SIGNED_IN' && session) checkSession();
-  else if (event === 'SIGNED_OUT') showLoginScreen();
-});
-
-document.getElementById('googleLoginBtn').addEventListener('click', signInWithGoogle);
-document.getElementById('logoutBtn').addEventListener('click', signOut);
-document.getElementById('logoutPendingBtn').addEventListener('click', signOut);
-document.getElementById('checkStatusBtn').addEventListener('click', checkStatus);
-
-function renderAdmin() {
-  document.getElementById('content').innerHTML = '<h1 class="page-title">Administración</h1><p class="page-sub">Gestiona usuarios</p><div class="panel"><div class="panel-head"><span class="panel-title">Usuarios pendientes</span><span class="panel-link" onclick="loadAdminUsers()">🔄</span></div><div id="pendingUsers">Cargando...</div></div><div class="panel"><div class="panel-head"><span class="panel-title">Usuarios activos</span></div><div id="activeUsers">Cargando...</div></div>';
-  loadAdminUsers();
-}
-
-async function loadAdminUsers() {
-  try {
-    const { data: users } = await supabaseClient.from('profiles').select('*').order('created_at', { ascending: false });
-    const pending = users.filter(u => u.role === 'pending');
-    const active = users.filter(u => u.role !== 'pending');
-    document.getElementById('pendingUsers').innerHTML = pending.length === 0 ? '<p style="color:var(--text-muted);">No hay pendientes</p>' : pending.map(u => '<div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;"><div style="flex:1;"><b>'+u.full_name+'</b><br><small>'+u.email+'</small></div><button class="btn" onclick="approveUser(\''+u.id+'\')" style="background:var(--green-bg);color:var(--green-text);">✓</button><button class="btn" onclick="rejectUser(\''+u.id+'\')" style="background:var(--red-bg);color:var(--red-text);">✕</button></div>').join('');
-    document.getElementById('activeUsers').innerHTML = active.length === 0 ? '<p style="color:var(--text-muted);">No hay activos</p>' : active.map(u => '<div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;"><div style="flex:1;"><b>'+u.full_name+'</b><br><small>'+u.email+'</small></div><span style="padding:4px 12px;border-radius:12px;font-size:12px;background:'+(u.role==='admin'?'var(--accent-soft)':'var(--green-bg)')+';">'+u.role+'</span></div>').join('');
-  } catch (e) { console.error(e); }
-}
-
-async function approveUser(userId) {
-  await supabaseClient.from('profiles').update({ role: 'abogado' }).eq('id', userId);
-  loadAdminUsers();
-}
-
-async function rejectUser(userId) {
-  if (!confirm('¿Eliminar usuario?')) return;
-  await supabaseClient.from('profiles').delete().eq('id', userId);
-  loadAdminUsers();
-}
-
-const originalRender = render;
-render = function() {
-  if (currentView === 'admin') { renderAdmin(); return; }
-  originalRender();
-};
-
-checkSession();
+loadData();
 </script>
 </body>
-</html>
+</html>// Updated Tue Aug 25 12:25:47 PM UTC 2026
