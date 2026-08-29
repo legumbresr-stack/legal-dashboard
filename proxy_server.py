@@ -153,12 +153,21 @@ def parse_detalle_estado(html_content, estado_titulo=''):
     documentos = []
     
     # ===== BUSCAR DOCUMENTOS DE EXPEDIENTE EN LA TABLA =====
-    # Los documentos tienen formato: XXXXXXXXX - XX.pdf (ej: 202500338 - DG.pdf)
+    # Los documentos tienen formato: 
+    # - XXXXXXXXX - XX.pdf (ej: 202500338 - DG.pdf)
+    # - XXXX-XXXXX - XX.pdf (ej: 2025-00338 - DG.pdf)
     
-    # Patrón para encontrar enlaces a documentos con nombre de expediente
-    # <a href="/documents/...">202500338 - DG.pdf</a>
-    pattern_doc_expediente = r'<a[^>]*href=["\']([^"\']+)["\'][^>]*>\s*(\d{9}\s*-\s*[^<]+\.pdf)\s*</a>'
-    matches = re.findall(pattern_doc_expediente, html_content, re.IGNORECASE)
+    # Patrón 1: Documentos con 9 dígitos seguidos (202500338 - DG.pdf)
+    pattern_doc_9digit = r'<a[^>]*href=["\']([^"\']+)["\'][^>]*>\s*(\d{9}\s*-\s*[^<]+\.pdf)\s*</a>'
+    matches = re.findall(pattern_doc_9digit, html_content, re.IGNORECASE)
+    
+    # Patrón 2: Documentos con formato XXXX-XXXXX (2025-00338 - DG.pdf)
+    pattern_doc_guion = r'<a[^>]*href=["\']([^"\']+)["\'][^>]*>\s*(\d{4}[-_]\d{5}\s*-\s*[^<]+\.pdf)\s*</a>'
+    matches += re.findall(pattern_doc_guion, html_content, re.IGNORECASE)
+    
+    # Patrón 3: Documentos con formato más flexible (cualquier número seguido de guion y texto)
+    pattern_doc_flex = r'<a[^>]*href=["\']([^"\']+\.pdf[^"\']*)["\'][^>]*>\s*(\d[\d\-_]+\s*-\s*[^<]+\.pdf)\s*</a>'
+    matches += re.findall(pattern_doc_flex, html_content, re.IGNORECASE)
     
     for url, nombre in matches:
         if url.startswith('/'):
@@ -168,9 +177,22 @@ def parse_detalle_estado(html_content, estado_titulo=''):
         
         nombre_limpio = nombre.strip()
         
-        # Extraer código de expediente del nombre (los 9 dígitos)
+        # Extraer código de expediente del nombre
+        # Puede ser: 202500338, 2025-00338, 2025_00338
+        codigo_expediente = ''
+        
+        # Intentar extraer 9 dígitos seguidos
         codigo_match = re.match(r'(\d{9})', nombre_limpio)
-        codigo_expediente = codigo_match.group(1) if codigo_match else ''
+        if codigo_match:
+            codigo_expediente = codigo_match.group(1)
+        else:
+            # Intentar extraer formato con guión: 2025-00338 → 202500338
+            codigo_match_guion = re.match(r'(\d{4})[-_](\d{5})', nombre_limpio)
+            if codigo_match_guion:
+                codigo_expediente = codigo_match_guion.group(1) + codigo_match_guion.group(2)
+        
+        if not codigo_expediente:
+            continue
         
         # Buscar fecha de carga cerca del documento
         fecha = ''
@@ -193,10 +215,7 @@ def parse_detalle_estado(html_content, estado_titulo=''):
             documentos.append(doc)
             print(f'[Detalle Estado] Documento de expediente: {nombre_limpio} (código: {codigo_expediente})')
     
-    # ===== BUSCAR TAMBIÉN EN TABLAS DE "Documentos de la publicación" =====
-    # A veces están en una tabla con estructura diferente
-    
-    # Buscar sección de "Documentos de la publicación" o similar
+    # ===== BUSCAR EN TABLAS DE "Documentos de la publicación" =====
     pattern_tabla_docs = r'Documentos?\s*(de la publicaci[oó]n|adjuntos?)?.*?<table[^>]*>(.*?)</table>'
     tabla_match = re.search(pattern_tabla_docs, html_content, re.IGNORECASE | re.DOTALL)
     
@@ -219,11 +238,17 @@ def parse_detalle_estado(html_content, estado_titulo=''):
                 else:
                     full_url = url
                 
-                # Verificar si es documento de expediente
+                # Extraer código de expediente
+                codigo_expediente = ''
                 codigo_match = re.match(r'(\d{9})', nombre)
                 if codigo_match:
                     codigo_expediente = codigo_match.group(1)
-                    
+                else:
+                    codigo_match_guion = re.match(r'(\d{4})[-_](\d{5})', nombre)
+                    if codigo_match_guion:
+                        codigo_expediente = codigo_match_guion.group(1) + codigo_match_guion.group(2)
+                
+                if codigo_expediente:
                     # Buscar fecha en la misma fila
                     fecha = ''
                     fecha_match = re.search(r'(\d{2}-\w{3}-\d{4}\s+\d{1,2}:\d{2}:\d{2})', fila, re.IGNORECASE)
@@ -244,10 +269,10 @@ def parse_detalle_estado(html_content, estado_titulo=''):
                         documentos.append(doc)
                         print(f'[Detalle Estado - Tabla] Documento: {nombre} (código: {codigo_expediente})')
     
-    # ===== BUSCAR CUALQUIER PDF CON PATRÓN DE 9 DÍGITOS =====
-    # Backup: buscar cualquier referencia a documentos con 9 dígitos
-    pattern_any_9digit = r'href=["\']([^"\']+)["\'][^>]*>\s*(\d{9}[^<]*\.pdf)'
-    any_matches = re.findall(pattern_any_9digit, html_content, re.IGNORECASE)
+    # ===== BUSCAR CUALQUIER PDF CON PATRÓN DE EXPEDIENTE =====
+    # Backup: buscar cualquier referencia a documentos con formato de expediente
+    pattern_any_exp = r'href=["\']([^"\']+)["\'][^>]*>\s*((?:\d{9}|\d{4}[-_]\d{5})[^<]*\.pdf)'
+    any_matches = re.findall(pattern_any_exp, html_content, re.IGNORECASE)
     
     for url, nombre in any_matches:
         if url.startswith('/'):
@@ -256,8 +281,19 @@ def parse_detalle_estado(html_content, estado_titulo=''):
             full_url = url
         
         nombre_limpio = nombre.strip()
+        
+        # Extraer código
+        codigo_expediente = ''
         codigo_match = re.match(r'(\d{9})', nombre_limpio)
-        codigo_expediente = codigo_match.group(1) if codigo_match else ''
+        if codigo_match:
+            codigo_expediente = codigo_match.group(1)
+        else:
+            codigo_match_guion = re.match(r'(\d{4})[-_](\d{5})', nombre_limpio)
+            if codigo_match_guion:
+                codigo_expediente = codigo_match_guion.group(1) + codigo_match_guion.group(2)
+        
+        if not codigo_expediente:
+            continue
         
         doc = {
             'nombre': nombre_limpio,

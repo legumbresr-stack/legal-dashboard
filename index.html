@@ -1457,7 +1457,7 @@ async function consultarPublicacionesDespacho(codigoDespacho, fechaInicio, fecha
   params.set('idMuni', idMuni);
   params.set('idDespacho', codigoDespacho);
   params.set('idDeptoIdCategory', idDeptoCategory);
-  params.set('profunda', 'false'); // Desactivada temporalmente para carga rápida
+  params.set('profunda', 'true'); // Activar consulta profunda para obtener documentos de expediente
   
   const proxyUrl = `/api/publicaciones?${params.toString()}`;
   
@@ -1485,16 +1485,15 @@ function vincularDocumentoAProceso(doc){
     // Normalizar el radicado del proceso (quitar guiones)
     const radicadoLimpio = p.radicado.replace(/[-\s]/g, '');
     
-    // Extraer los 9 dígitos del radicado (posiciones 13-21, índice 12-20)
-    // Ejemplo: 11001311002720250033800 → 202500338
-    const codigoExpediente = radicadoLimpio.length >= 21 
-      ? radicadoLimpio.substring(12, 21) 
-      : radicadoLimpio.substring(12); // Si es más corto, tomar lo que haya
-    
-    // También extraer formato año-número: 2025-00338 o 202500338
-    const añoNumero = radicadoLimpio.length >= 21
-      ? radicadoLimpio.substring(12, 16) + radicadoLimpio.substring(16, 21) // 20250033800 → 202500338
-      : '';
+    // NUEVO: Extraer código de expediente de los últimos 11 dígitos, quitando los 2 últimos
+    // Ejemplo: 11001311002720250033800
+    //          Últimos 11: 20250033800
+    //          Sin últimos 2: 202500338 ← Este es el código
+    let codigoExpediente = '';
+    if(radicadoLimpio.length >= 11){
+      const ultimos11 = radicadoLimpio.slice(-11); // 20250033800
+      codigoExpediente = ultimos11.slice(0, -2);    // 202500338
+    }
     
     // Limpiar nombre del documento para buscar
     const nombreDoc = doc.nombre.toLowerCase();
@@ -1502,12 +1501,12 @@ function vincularDocumentoAProceso(doc){
     // Verificar si el documento corresponde a este proceso
     let coincide = false;
     
-    // Método 0 (NUEVO): Comparar código de expediente del documento con el del proceso
-    // Esto funciona para documentos de expediente extraídos por consulta profunda
+    // Método 0: Comparar código de expediente del documento con el del proceso
     if(codigoExpedienteDoc && codigoExpediente){
-      if(codigoExpedienteDoc === codigoExpediente){
+      // Normalizar ambos códigos (quitar guiones)
+      const codigoDocLimpio = codigoExpedienteDoc.replace(/[-_]/g, '');
+      if(codigoDocLimpio === codigoExpediente){
         coincide = true;
-        console.log(`✅ Match directo por código: ${codigoExpedienteDoc} === ${codigoExpediente}`);
       }
     }
     
@@ -1521,25 +1520,26 @@ function vincularDocumentoAProceso(doc){
       coincide = true;
     }
     
-    // Método 3: Buscar patrón año-número en el nombre (2024-00358, 202400358, etc.)
+    // Método 3: Buscar formato con guión en el documento (2025-00338)
+    if(!coincide && codigoExpediente.length === 9){
+      // Convertir 202500338 a formato 2025-00338
+      const codigoConGuion = codigoExpediente.substring(0, 4) + '-' + codigoExpediente.substring(4);
+      if(nombreDoc.includes(codigoConGuion.toLowerCase())){
+        coincide = true;
+      }
+    }
+    
+    // Método 4: Buscar patrón año-número en el nombre (2024-00358, 202400358, etc.)
     if(!coincide){
-      const patronesDoc = nombreDoc.match(/(\d{4})[-_]?(\d{5,6})/g);
+      const patronesDoc = nombreDoc.match(/(\d{4})[-_]?(\d{5})/g);
       if(patronesDoc){
         for(const patron of patronesDoc){
           const patronLimpio = patron.replace(/[-_]/g, '');
-          if(radicadoLimpio.includes(patronLimpio)){
+          if(patronLimpio === codigoExpediente){
             coincide = true;
             break;
           }
         }
-      }
-    }
-    
-    // Método 4: Comparar los últimos dígitos significativos
-    if(!coincide && añoNumero){
-      // Buscar si el nombre contiene algo como 202500338
-      if(nombreDoc.includes(añoNumero.substring(0, 9).toLowerCase())){
-        coincide = true;
       }
     }
     
