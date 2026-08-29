@@ -266,6 +266,19 @@ def parse_publicaciones_html(html_content):
     # ===== EXTRAER URLs DE DETALLE DE ESTADOS =====
     urls_detalle = extraer_urls_estados(html_content)
     
+    # DEBUG: Guardar HTML para análisis si no encuentra URLs
+    if len(urls_detalle) == 0:
+        # Buscar si hay botones o enlaces con texto "VER DETALLE" o "Ver Detalle"
+        if 'VER DETALLE' in html_content or 'Ver Detalle' in html_content or 'ver detalle' in html_content.lower():
+            print('[DEBUG] El HTML contiene "VER DETALLE" pero no se encontraron URLs')
+            # Buscar el contexto alrededor de "VER DETALLE"
+            idx = html_content.lower().find('ver detalle')
+            if idx > 0:
+                contexto = html_content[max(0, idx-500):idx+500]
+                print(f'[DEBUG] Contexto alrededor de VER DETALLE:\n{contexto[:1000]}')
+        else:
+            print('[DEBUG] El HTML NO contiene "VER DETALLE"')
+    
     # ===== EXTRAER DOCUMENTOS PDF DIRECTOS (Estados principales) =====
     # Patrón para enlaces a documentos PDF
     # Ejemplo: /documents/6098902/254280154/Estado+77+del+25+de+Agosto+de+2026+%281%29.pdf/12cfd2e5-35d8-9cc8-c252-73eabebb96ad
