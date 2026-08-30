@@ -1,4 +1,4 @@
-<!-- Build: 2026-08-29-VINCULAR-FIX -->
+<!-- Build: 2026-08-29-TIMEOUT-FIX -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -1439,9 +1439,16 @@ async function syncPublicacionesProcesalesRapido(){
       params.set('idMuni', despacho.codigo.substring(0, 5));
       params.set('idDespacho', despacho.codigo);
       params.set('profunda', 'true');
-      params.set('maxEstados', '100'); // Consultar hasta 100 estados para cubrir el historial
+      params.set('maxEstados', '30'); // Reducido a 30 para evitar timeouts (era 100)
       
-      const response = await fetch(`/api/publicaciones?${params.toString()}`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutos timeout
+      
+      const response = await fetch(`/api/publicaciones?${params.toString()}`, {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      
       if(!response.ok) continue;
       
       const resultado = await response.json();
@@ -1645,15 +1652,25 @@ async function consultarPublicacionesDespacho(codigoDespacho, fechaInicio, fecha
   params.set('idDespacho', codigoDespacho);
   params.set('idDeptoIdCategory', idDeptoCategory);
   params.set('profunda', 'true'); // Activar consulta profunda para obtener documentos de expediente
-  params.set('maxEstados', '100'); // Consultar hasta 100 estados para mejor cobertura histórica (antes 50)
+  params.set('maxEstados', '30'); // Reducido a 30 para evitar timeouts
   
   const proxyUrl = `/api/publicaciones?${params.toString()}`;
   
   try {
-    const response = await fetch(proxyUrl, { method: 'GET', headers: { 'Accept': 'application/json' } });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 min timeout
+    
+    const response = await fetch(proxyUrl, { 
+      method: 'GET', 
+      headers: { 'Accept': 'application/json' },
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    
     if(!response.ok) return null;
     return await response.json();
   } catch(err){
+    console.warn(`⚠️ Error consultando publicaciones: ${err.message}`);
     return null;
   }
 }
