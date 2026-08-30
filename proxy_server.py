@@ -581,8 +581,60 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                 documentos = parsed_result['documentos']
                 urls_detalle = parsed_result.get('urls_detalle', [])
                 
-                print(f'[Publicaciones] Búsqueda inicial: {len(publicaciones)} publicaciones, {len(documentos)} documentos')
+                print(f'[Publicaciones] Búsqueda inicial (página 1): {len(publicaciones)} publicaciones, {len(documentos)} documentos')
                 print(f'[Publicaciones] URLs de detalle encontradas: {len(urls_detalle)}')
+                
+                # ===== PAGINACIÓN DE BÚSQUEDA: Obtener más estados de páginas adicionales =====
+                # Buscar si hay más páginas de resultados
+                total_estados_match = re.search(r'de\s+(\d+)\s+resultados', html_data, re.IGNORECASE)
+                if total_estados_match:
+                    total_estados = int(total_estados_match.group(1))
+                    estados_por_pagina = 10
+                    paginas_totales = (total_estados + estados_por_pagina - 1) // estados_por_pagina
+                    
+                    if paginas_totales > 1:
+                        print(f'[Publicaciones] Detectada paginación en búsqueda: {total_estados} estados en {paginas_totales} páginas')
+                        
+                        # Buscar enlaces de paginación y consultar páginas adicionales
+                        for pagina in range(2, min(paginas_totales + 1, 20)):  # Máximo 20 páginas de estados
+                            try:
+                                # Buscar el enlace a la siguiente página
+                                # Los enlaces suelen tener cur=X o delta=X
+                                offset = (pagina - 1) * estados_por_pagina
+                                pag_pattern = rf'href=["\']([^"\']*(?:delta={offset}|cur={pagina})[^"\']*)["\']'
+                                pag_match = re.search(pag_pattern, html_data, re.IGNORECASE)
+                                
+                                if pag_match:
+                                    pag_url = pag_match.group(1)
+                                    if pag_url.startswith('/'):
+                                        pag_url = DOCS_BASE_URL + pag_url
+                                    elif not pag_url.startswith('http'):
+                                        pag_url = DOCS_BASE_URL + '/' + pag_url
+                                    
+                                    print(f'[Publicaciones] Consultando página {pagina} de estados...')
+                                    req_pag = urllib.request.Request(pag_url)
+                                    req_pag.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
+                                    req_pag.add_header('Accept', 'text/html')
+                                    req_pag.add_header('Referer', full_url)
+                                    
+                                    with opener.open(req_pag, timeout=45) as resp_pag:
+                                        html_pag = resp_pag.read().decode('utf-8', errors='ignore')
+                                        parsed_pag = parse_publicaciones_html(html_pag)
+                                        
+                                        # Agregar URLs de detalle nuevas
+                                        for url in parsed_pag.get('urls_detalle', []):
+                                            if url not in urls_detalle:
+                                                urls_detalle.append(url)
+                                        
+                                        # Actualizar HTML para buscar siguiente página
+                                        html_data = html_pag
+                                        
+                                        print(f'[Publicaciones] Página {pagina}: {len(parsed_pag.get("urls_detalle", []))} estados adicionales')
+                            except Exception as e:
+                                print(f'[Publicaciones] Error en página {pagina} de estados: {str(e)[:30]}')
+                                break
+                        
+                        print(f'[Publicaciones] Total URLs de detalle después de paginación: {len(urls_detalle)}')
                 
                 # ===== CONSULTA PROFUNDA: entrar a cada Estado =====
                 documentos_expediente = []
