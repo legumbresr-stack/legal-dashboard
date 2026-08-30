@@ -1339,9 +1339,9 @@ function startAutoSync(){
   // Clear existing interval if any
   if(autoSyncInterval) clearInterval(autoSyncInterval);
   
-  // Sync immediately on load
+  // Sync processes immediately on load (pero NO publicaciones - es muy lento)
   if(procesos.length > 0){
-    console.log('🔄 Sincronizando procesos...');
+    console.log('🔄 Sincronizando actuaciones de procesos...');
     syncAllProcesses().then(updated => {
       if(updated){
         console.log('✅ Procesos actualizados');
@@ -1349,20 +1349,23 @@ function startAutoSync(){
       }
     });
     
-    // También sincronizar publicaciones
-    console.log('📋 Sincronizando publicaciones procesales...');
-    syncPublicacionesProcesales().then(updated => {
-      if(updated){
-        console.log('✅ Publicaciones actualizadas');
-        render();
-      }
-    });
+    // Las publicaciones procesales se sincronizan manualmente o en segundo plano después
+    // para no bloquear la carga inicial
+    setTimeout(() => {
+      console.log('📋 Sincronizando publicaciones procesales en segundo plano...');
+      syncPublicacionesProcesalesRapido().then(updated => {
+        if(updated){
+          console.log('✅ Publicaciones actualizadas');
+          render();
+        }
+      });
+    }, 5000); // Esperar 5 segundos después de cargar
   }
   
-  // Then sync every 5 minutes (300000 ms)
+  // Then sync every 10 minutes (aumentado de 5 a 10 para reducir carga)
   autoSyncInterval = setInterval(async () => {
     if(procesos.length > 0){
-      console.log('🔄 Sincronización automática (cada 5 min)...');
+      console.log('🔄 Sincronización automática (cada 10 min)...');
       const updated = await syncAllProcesses();
       if(updated){
         console.log('✅ Procesos actualizados');
@@ -1371,16 +1374,67 @@ function startAutoSync(){
         console.log('ℹ️ Sin cambios en procesos');
       }
       
-      // Sincronizar publicaciones procesales
-      const pubUpdated = await syncPublicacionesProcesales();
+      // Sincronizar publicaciones procesales (versión rápida)
+      const pubUpdated = await syncPublicacionesProcesalesRapido();
       if(pubUpdated){
         console.log('✅ Nuevas publicaciones encontradas');
         render();
       }
     }
-  }, 5 * 60 * 1000); // 5 minutos
+  }, 10 * 60 * 1000); // 10 minutos
   
-  console.log('⏰ Auto-sync activado: cada 5 minutos');
+  console.log('⏰ Auto-sync activado: cada 10 minutos');
+}
+
+// Sincronización RÁPIDA de publicaciones (solo últimos 7 días, pocos estados)
+async function syncPublicacionesProcesalesRapido(){
+  const despachos = getDespachosDeProcesos();
+  if(despachos.length === 0) return false;
+  
+  console.log(`📋 Sync rápido publicaciones: ${despachos.length} despacho(s)...`);
+  
+  let documentosVinculados = 0;
+  const hoy = new Date();
+  const hace7dias = new Date(hoy);
+  hace7dias.setDate(hace7dias.getDate() - 7);
+  
+  const fechaInicio = hace7dias.toISOString().split('T')[0];
+  const fechaFin = hoy.toISOString().split('T')[0];
+  
+  for(const despacho of despachos){
+    try {
+      // Usar versión simple sin paginación profunda
+      const params = new URLSearchParams();
+      params.set('fechaInicio', fechaInicio);
+      params.set('fechaFin', fechaFin);
+      params.set('idDepto', despacho.codigo.substring(0, 2));
+      params.set('idMuni', despacho.codigo.substring(0, 5));
+      params.set('idDespacho', despacho.codigo);
+      params.set('profunda', 'true');
+      params.set('maxEstados', '5'); // Solo 5 estados más recientes
+      
+      const response = await fetch(`/api/publicaciones?${params.toString()}`);
+      if(!response.ok) continue;
+      
+      const resultado = await response.json();
+      if(resultado && resultado.documentosExpediente){
+        for(const doc of resultado.documentosExpediente){
+          if(vincularDocumentoAProceso(doc)){
+            documentosVinculados++;
+          }
+        }
+      }
+    } catch(err){
+      console.warn(`⚠️ Error sync rápido ${despacho.codigo}:`, err.message);
+    }
+  }
+  
+  if(documentosVinculados > 0){
+    savePublicaciones();
+    saveProcesos();
+    return true;
+  }
+  return false;
 }
 
 // Storage key para publicaciones sincronizadas
@@ -1421,24 +1475,37 @@ async function syncPublicacionesProcesales(){
   let documentosExpedienteVinculados = 0;
   const hoy = new Date();
   
-  // Buscar el año más antiguo de los procesos para obtener historial completo
-  let añoMasAntiguo = hoy.getFullYear();
+  // Buscar fechas de actuaciones "D-Fijación y desfijación de estado" para búsqueda inteligente
+  let fechasABuscar = [];
   procesos.forEach(p => {
-    if(p.radicado && p.radicado.length >= 19){
-      // Extraer año del radicado (posiciones 12-15, ej: 11001311002720250033800 -> 2025)
-      const radicadoLimpio = p.radicado.replace(/[-\s]/g, '');
-      const añoRadicado = parseInt(radicadoLimpio.substring(12, 16));
-      if(añoRadicado && añoRadicado >= 2000 && añoRadicado < añoMasAntiguo){
-        añoMasAntiguo = añoRadicado;
-      }
+    if(p.actuaciones){
+      p.actuaciones.forEach(act => {
+        if(act.actuacion && act.actuacion.toLowerCase().includes('fijación') && 
+           act.actuacion.toLowerCase().includes('estado')){
+          // Extraer fecha de la actuación
+          if(act.fechaActuacion){
+            fechasABuscar.push(new Date(act.fechaActuacion));
+          }
+        }
+      });
     }
   });
   
-  // Buscar desde el 1 de enero del año más antiguo
-  const fechaInicio = `${añoMasAntiguo}-01-01`;
-  const fechaFin = hoy.toISOString().split('T')[0];
+  // Si hay fechas de actuaciones, usar la más antigua; si no, usar últimos 30 días
+  let fechaInicio;
+  if(fechasABuscar.length > 0){
+    const fechaMasAntigua = new Date(Math.min(...fechasABuscar));
+    fechaMasAntigua.setDate(fechaMasAntigua.getDate() - 7); // 7 días antes de la primera
+    fechaInicio = fechaMasAntigua.toISOString().split('T')[0];
+    console.log(`📅 Búsqueda inteligente basada en actuaciones: desde ${fechaInicio}`);
+  } else {
+    const hace30dias = new Date(hoy);
+    hace30dias.setDate(hace30dias.getDate() - 30);
+    fechaInicio = hace30dias.toISOString().split('T')[0];
+    console.log(`📅 Búsqueda por defecto: últimos 30 días desde ${fechaInicio}`);
+  }
   
-  console.log(`📅 Rango de búsqueda histórico: ${fechaInicio} a ${fechaFin} (desde año ${añoMasAntiguo})`);
+  const fechaFin = hoy.toISOString().split('T')[0];
   
   for(const despacho of despachos){
     try {
@@ -1454,13 +1521,11 @@ async function syncPublicacionesProcesales(){
           }
         }
         
-        // NUEVO: Procesar documentos de expediente (XXXXXXXXX - XX.pdf)
-        // Estos vienen de la consulta profunda dentro de cada Estado
+        // Procesar documentos de expediente
         if(resultado.documentosExpediente && resultado.documentosExpediente.length > 0){
           console.log(`📎 ${resultado.documentosExpediente.length} documentos de expediente encontrados`);
           
           for(const docExp of resultado.documentosExpediente){
-            // Intentar vincular por código de expediente
             const procesoVinculado = vincularDocumentoAProceso(docExp);
             if(procesoVinculado){
               documentosExpedienteVinculados++;
@@ -1527,7 +1592,7 @@ async function consultarPublicacionesDespacho(codigoDespacho, fechaInicio, fecha
   params.set('idDespacho', codigoDespacho);
   params.set('idDeptoIdCategory', idDeptoCategory);
   params.set('profunda', 'true'); // Activar consulta profunda para obtener documentos de expediente
-  params.set('maxEstados', '100'); // Consultar hasta 100 estados para obtener historial completo
+  params.set('maxEstados', '20'); // Consultar hasta 20 estados para balance entre velocidad y cobertura
   
   const proxyUrl = `/api/publicaciones?${params.toString()}`;
   
