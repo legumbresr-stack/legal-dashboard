@@ -589,8 +589,8 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                 estados_consultados = 0
                 
                 if consulta_profunda and urls_detalle:
-                    # Obtener límite de estados desde parámetro (default: 30, máximo: 100)
-                    max_estados = min(int(params.get('maxEstados', ['30'])[0]), 100)
+                    # Obtener límite de estados desde parámetro (default: 50, máximo: 200)
+                    max_estados = min(int(params.get('maxEstados', ['50'])[0]), 200)
                     urls_a_consultar = urls_detalle[:max_estados]
                     print(f'[Publicaciones] Iniciando consulta profunda de {len(urls_a_consultar)} estados (de {len(urls_detalle)} encontrados, máx configurado: {max_estados})...')
                     
