@@ -1592,7 +1592,7 @@ async function consultarPublicacionesDespacho(codigoDespacho, fechaInicio, fecha
   params.set('idDespacho', codigoDespacho);
   params.set('idDeptoIdCategory', idDeptoCategory);
   params.set('profunda', 'true'); // Activar consulta profunda para obtener documentos de expediente
-  params.set('maxEstados', '20'); // Consultar hasta 20 estados para balance entre velocidad y cobertura
+  params.set('maxEstados', '50'); // Consultar hasta 50 estados para mejor cobertura histórica
   
   const proxyUrl = `/api/publicaciones?${params.toString()}`;
   
