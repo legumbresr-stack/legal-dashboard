@@ -1,4 +1,4 @@
-<!-- Build: 2026-08-26-HISTORIAL-DEBUG -->
+<!-- Build: 2026-08-29-VINCULAR-FIX -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -1666,6 +1666,9 @@ function vincularDocumentoAProceso(doc){
   // Si el documento ya tiene el código de expediente extraído por el servidor
   const codigoExpedienteDoc = doc.codigoExpediente || '';
   
+  // DEBUG: Ver qué documento se está intentando vincular
+  console.log(`🔍 Intentando vincular: ${doc.nombre} (código servidor: ${codigoExpedienteDoc})`);
+  
   let procesosVinculados = [];
   
   // Buscar en cada proceso
@@ -1735,11 +1738,16 @@ function vincularDocumentoAProceso(doc){
     }
     
     if(coincide){
-      // Verificar si ya está vinculado
+      // Verificar si ya está vinculado - SOLO por URL exacta, no por nombre
+      // (porque puede haber documentos diferentes con nombres similares)
       if(!p.documentosPublicaciones) p.documentosPublicaciones = [];
       
-      const yaExiste = p.documentosPublicaciones.some(d => d.url === doc.url || d.nombre === doc.nombre);
-      if(yaExiste) continue; // Continuar buscando otros procesos, no retornar
+      // Solo verificar duplicado por URL (la URL es única)
+      const yaExiste = p.documentosPublicaciones.some(d => d.url === doc.url);
+      if(yaExiste){
+        console.log(`⏭️ Documento ya existe (URL): ${doc.nombre}`);
+        continue; // Continuar buscando otros procesos, no retornar
+      }
       
       // Determinar tipo de documento
       let tipoDoc = 'Documento';
@@ -1760,10 +1768,15 @@ function vincularDocumentoAProceso(doc){
         estadoOrigen: doc.estadoOrigen || ''
       });
       
-      console.log(`📎 Documento vinculado: ${doc.nombre} → ${p.radicado} (código: ${codigoExpediente}, tipo: ${tipoDoc})`);
+      console.log(`✅ VINCULADO: ${doc.nombre} → Proceso ${p.radicado.slice(-11)} (código: ${codigoExpediente})`);
       procesosVinculados.push(p);
       // NO hacer return aquí - continuar para vincular a otros procesos con mismo radicado
     }
+  }
+  
+  // Guardar inmediatamente después de vincular para no perder datos
+  if(procesosVinculados.length > 0){
+    saveProcesos();
   }
   
   // Retornar el primer proceso vinculado (para compatibilidad con código existente)
