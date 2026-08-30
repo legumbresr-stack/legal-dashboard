@@ -592,26 +592,55 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                     estados_por_pagina = 10
                     paginas_totales = (total_estados + estados_por_pagina - 1) // estados_por_pagina
                     
+                    print(f'[Publicaciones] ★★★ Total estados encontrados: {total_estados} en {paginas_totales} páginas ★★★')
+                    
                     if paginas_totales > 1:
                         print(f'[Publicaciones] Detectada paginación en búsqueda: {total_estados} estados en {paginas_totales} páginas')
                         
-                        # Buscar enlaces de paginación y consultar páginas adicionales
-                        for pagina in range(2, min(paginas_totales + 1, 20)):  # Máximo 20 páginas de estados
-                            try:
-                                # Buscar el enlace a la siguiente página
-                                # Los enlaces suelen tener cur=X o delta=X
-                                offset = (pagina - 1) * estados_por_pagina
-                                pag_pattern = rf'href=["\']([^"\']*(?:delta={offset}|cur={pagina})[^"\']*)["\']'
-                                pag_match = re.search(pag_pattern, html_data, re.IGNORECASE)
-                                
-                                if pag_match:
-                                    pag_url = pag_match.group(1)
+                        # MÉTODO MEJORADO: Buscar TODOS los enlaces de paginación en el HTML
+                        # Los portales Liferay usan diferentes patrones:
+                        # 1. {namespace}cur=X  (página X)
+                        # 2. delta=X (offset)
+                        # 3. Enlaces numéricos directos
+                        
+                        # Buscar todos los enlaces de paginación disponibles
+                        pag_patterns = [
+                            # Patrón con namespace del portlet
+                            rf'href=["\']([^"\']*{re.escape(ns)}cur=(\d+)[^"\']*)["\']',
+                            # Patrón genérico con cur=
+                            r'href=["\']([^"\']*[?&]cur=(\d+)[^"\']*)["\']',
+                            # Patrón con delta (offset)
+                            r'href=["\']([^"\']*[?&]delta=(\d+)[^"\']*)["\']',
+                            # Patrón de SearchContainer (suele tener estos parámetros)
+                            r'href=["\']([^"\']*SearchContainer[^"\']*cur=(\d+)[^"\']*)["\']',
+                        ]
+                        
+                        paginas_encontradas = {}
+                        for pattern in pag_patterns:
+                            matches = re.findall(pattern, html_data, re.IGNORECASE)
+                            for url, num in matches:
+                                num_int = int(num)
+                                if num_int > 1 and num_int not in paginas_encontradas:
+                                    paginas_encontradas[num_int] = url
+                                    print(f'[Publicaciones] Enlace página {num_int} encontrado')
+                        
+                        print(f'[Publicaciones] Páginas de paginación detectadas: {list(paginas_encontradas.keys())}')
+                        
+                        # Si encontramos enlaces directos, usarlos
+                        if paginas_encontradas:
+                            for pagina in sorted(paginas_encontradas.keys())[:19]:  # Máximo 19 páginas adicionales
+                                try:
+                                    pag_url = paginas_encontradas[pagina]
+                                    
+                                    # Decodificar entidades HTML
+                                    pag_url = pag_url.replace('&amp;', '&')
+                                    
                                     if pag_url.startswith('/'):
                                         pag_url = DOCS_BASE_URL + pag_url
                                     elif not pag_url.startswith('http'):
-                                        pag_url = DOCS_BASE_URL + '/' + pag_url
+                                        pag_url = DOCS_BASE_URL + '/web/publicaciones-procesales/inicio?' + pag_url
                                     
-                                    print(f'[Publicaciones] Consultando página {pagina} de estados...')
+                                    print(f'[Publicaciones] Consultando página {pagina} de estados: {pag_url[:100]}...')
                                     req_pag = urllib.request.Request(pag_url)
                                     req_pag.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
                                     req_pag.add_header('Accept', 'text/html')
@@ -621,20 +650,66 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                                         html_pag = resp_pag.read().decode('utf-8', errors='ignore')
                                         parsed_pag = parse_publicaciones_html(html_pag)
                                         
-                                        # Agregar URLs de detalle nuevas
+                                        nuevas_urls = 0
                                         for url in parsed_pag.get('urls_detalle', []):
                                             if url not in urls_detalle:
                                                 urls_detalle.append(url)
+                                                nuevas_urls += 1
                                         
-                                        # Actualizar HTML para buscar siguiente página
-                                        html_data = html_pag
+                                        print(f'[Publicaciones] Página {pagina}: {nuevas_urls} estados nuevos (total: {len(urls_detalle)})')
                                         
-                                        print(f'[Publicaciones] Página {pagina}: {len(parsed_pag.get("urls_detalle", []))} estados adicionales')
-                            except Exception as e:
-                                print(f'[Publicaciones] Error en página {pagina} de estados: {str(e)[:30]}')
-                                break
+                                        # Buscar más páginas en esta respuesta
+                                        for pattern in pag_patterns:
+                                            matches = re.findall(pattern, html_pag, re.IGNORECASE)
+                                            for url, num in matches:
+                                                num_int = int(num)
+                                                if num_int > pagina and num_int not in paginas_encontradas:
+                                                    paginas_encontradas[num_int] = url
+                                                    
+                                except Exception as e:
+                                    print(f'[Publicaciones] Error en página {pagina} de estados: {str(e)[:50]}')
+                                    continue
+                        else:
+                            # MÉTODO ALTERNATIVO: Construir URLs de paginación manualmente
+                            print(f'[Publicaciones] No se encontraron enlaces de paginación directos, intentando construcción manual...')
+                            
+                            for pagina in range(2, min(paginas_totales + 1, 20)):
+                                try:
+                                    # Agregar parámetro cur= a la URL base
+                                    pag_params = query_params.copy()
+                                    pag_params[f'{ns}cur'] = str(pagina)
+                                    
+                                    pag_url = base_url + '?' + urllib.parse.urlencode(pag_params)
+                                    
+                                    print(f'[Publicaciones] Intentando página {pagina} (construcción manual)...')
+                                    req_pag = urllib.request.Request(pag_url)
+                                    req_pag.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
+                                    req_pag.add_header('Accept', 'text/html')
+                                    req_pag.add_header('Referer', full_url)
+                                    
+                                    with opener.open(req_pag, timeout=45) as resp_pag:
+                                        html_pag = resp_pag.read().decode('utf-8', errors='ignore')
+                                        parsed_pag = parse_publicaciones_html(html_pag)
+                                        
+                                        nuevas_urls = 0
+                                        for url in parsed_pag.get('urls_detalle', []):
+                                            if url not in urls_detalle:
+                                                urls_detalle.append(url)
+                                                nuevas_urls += 1
+                                        
+                                        if nuevas_urls == 0:
+                                            print(f'[Publicaciones] Página {pagina}: sin nuevos estados, deteniendo paginación')
+                                            break
+                                            
+                                        print(f'[Publicaciones] Página {pagina}: {nuevas_urls} estados nuevos (total: {len(urls_detalle)})')
+                                        
+                                except Exception as e:
+                                    print(f'[Publicaciones] Error en página {pagina}: {str(e)[:50]}')
+                                    break
                         
-                        print(f'[Publicaciones] Total URLs de detalle después de paginación: {len(urls_detalle)}')
+                        print(f'[Publicaciones] ★★★ Total URLs de detalle después de paginación: {len(urls_detalle)} ★★★')
+                else:
+                    print(f'[Publicaciones] ⚠️ No se detectó patrón "de X resultados" en el HTML')
                 
                 # ===== CONSULTA PROFUNDA: entrar a cada Estado =====
                 documentos_expediente = []

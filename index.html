@@ -1,4 +1,4 @@
-<!-- Build: 2026-08-26-CLEAN -->
+<!-- Build: 2026-08-26-PAG-FIX -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -1475,34 +1475,56 @@ async function syncPublicacionesProcesales(){
   let documentosExpedienteVinculados = 0;
   const hoy = new Date();
   
-  // Buscar fechas de actuaciones "D-Fijación y desfijación de estado" para búsqueda inteligente
+  // Buscar TODAS las fechas de actuaciones para búsqueda inteligente
+  // No solo "fijación de estado" sino cualquier actuación que pueda tener documentos
   let fechasABuscar = [];
   procesos.forEach(p => {
     if(p.actuaciones){
       p.actuaciones.forEach(act => {
-        if(act.actuacion && act.actuacion.toLowerCase().includes('fijación') && 
-           act.actuacion.toLowerCase().includes('estado')){
-          // Extraer fecha de la actuación
-          if(act.fechaActuacion){
-            fechasABuscar.push(new Date(act.fechaActuacion));
-          }
+        // Buscar actuaciones que suelen tener documentos en publicaciones procesales:
+        // - Fijación de estado
+        // - Auto (cualquier auto)
+        // - Sentencia
+        // - Notificaciones
+        // - Traslados
+        const actLower = (act.actuacion || '').toLowerCase();
+        const tieneDocumento = actLower.includes('fijación') || 
+                               actLower.includes('estado') ||
+                               actLower.includes('auto') ||
+                               actLower.includes('sentencia') ||
+                               actLower.includes('notifica') ||
+                               actLower.includes('traslado') ||
+                               actLower.includes('aviso') ||
+                               actLower.includes('edicto') ||
+                               actLower.includes('providencia');
+        
+        if(tieneDocumento && act.fechaActuacion){
+          fechasABuscar.push(new Date(act.fechaActuacion));
         }
       });
     }
   });
   
-  // Si hay fechas de actuaciones, usar la más antigua; si no, usar últimos 30 días
+  // Ordenar fechas y mostrar resumen
+  if(fechasABuscar.length > 0){
+    fechasABuscar.sort((a, b) => a - b);
+    console.log(`📅 ${fechasABuscar.length} actuaciones con posibles documentos encontradas`);
+    console.log(`📅 Fecha más antigua: ${fechasABuscar[0].toISOString().split('T')[0]}`);
+    console.log(`📅 Fecha más reciente: ${fechasABuscar[fechasABuscar.length-1].toISOString().split('T')[0]}`);
+  }
+  
+  // Si hay fechas de actuaciones, usar la más antigua; si no, usar últimos 60 días
   let fechaInicio;
   if(fechasABuscar.length > 0){
     const fechaMasAntigua = new Date(Math.min(...fechasABuscar));
-    fechaMasAntigua.setDate(fechaMasAntigua.getDate() - 7); // 7 días antes de la primera
+    fechaMasAntigua.setDate(fechaMasAntigua.getDate() - 14); // 14 días antes de la primera (para margen)
     fechaInicio = fechaMasAntigua.toISOString().split('T')[0];
     console.log(`📅 Búsqueda inteligente basada en actuaciones: desde ${fechaInicio}`);
   } else {
-    const hace30dias = new Date(hoy);
-    hace30dias.setDate(hace30dias.getDate() - 30);
-    fechaInicio = hace30dias.toISOString().split('T')[0];
-    console.log(`📅 Búsqueda por defecto: últimos 30 días desde ${fechaInicio}`);
+    const hace60dias = new Date(hoy);
+    hace60dias.setDate(hace60dias.getDate() - 60);
+    fechaInicio = hace60dias.toISOString().split('T')[0];
+    console.log(`📅 Búsqueda por defecto: últimos 60 días desde ${fechaInicio}`);
   }
   
   const fechaFin = hoy.toISOString().split('T')[0];
@@ -1592,7 +1614,7 @@ async function consultarPublicacionesDespacho(codigoDespacho, fechaInicio, fecha
   params.set('idDespacho', codigoDespacho);
   params.set('idDeptoIdCategory', idDeptoCategory);
   params.set('profunda', 'true'); // Activar consulta profunda para obtener documentos de expediente
-  params.set('maxEstados', '50'); // Consultar hasta 50 estados para mejor cobertura histórica
+  params.set('maxEstados', '100'); // Consultar hasta 100 estados para mejor cobertura histórica (antes 50)
   
   const proxyUrl = `/api/publicaciones?${params.toString()}`;
   
