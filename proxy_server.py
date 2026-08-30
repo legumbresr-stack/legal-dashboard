@@ -584,6 +584,33 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                 print(f'[Publicaciones] Búsqueda inicial (página 1): {len(publicaciones)} publicaciones, {len(documentos)} documentos')
                 print(f'[Publicaciones] URLs de detalle encontradas: {len(urls_detalle)}')
                 
+                # ===== DEBUG: Analizar estructura de paginación =====
+                # Buscar diferentes indicadores de paginación/total en el HTML
+                debug_patterns = {
+                    'de X resultados': r'de\s+(\d+)\s+resultados',
+                    'Total: X': r'[Tt]otal[:\s]+(\d+)',
+                    'X registros': r'(\d+)\s+registros',
+                    'showing/mostrando': r'[Mm]ostrando[^<]*?(\d+)',
+                    'lfr-pagination': r'lfr-pagination',
+                    'pagination': r'class=["\'][^"\']*pagination[^"\']*["\']',
+                    'page-link/item': r'class=["\'][^"\']*page-(link|item)[^"\']*["\']',
+                    'cur=': r'[?&]cur=(\d+)',
+                    'delta=': r'[?&]delta=(\d+)',
+                    'data-page': r'data-page=["\'](\d+)["\']',
+                }
+                print('[Publicaciones] === DEBUG PAGINACIÓN ===')
+                for nombre, pat in debug_patterns.items():
+                    m = re.findall(pat, html_data, re.IGNORECASE)
+                    if m:
+                        print(f'[Publicaciones]   ✓ "{nombre}": {m[:5]}')
+                # Buscar el fragmento de HTML que contiene "resultado" para inspección
+                idx_resultado = html_data.lower().find('resultado')
+                if idx_resultado > 0:
+                    fragmento = html_data[max(0,idx_resultado-100):idx_resultado+100]
+                    fragmento = re.sub(r'\s+', ' ', fragmento)
+                    print(f'[Publicaciones]   Contexto "resultado": ...{fragmento}...')
+                print('[Publicaciones] === FIN DEBUG ===')
+                
                 # ===== PAGINACIÓN DE BÚSQUEDA: Obtener más estados de páginas adicionales =====
                 # Buscar si hay más páginas de resultados
                 total_estados_match = re.search(r'de\s+(\d+)\s+resultados', html_data, re.IGNORECASE)

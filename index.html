@@ -1,4 +1,4 @@
-<!-- Build: 2026-08-26-PAG-FIX -->
+<!-- Build: 2026-08-26-HISTORIAL-DEBUG -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -1386,24 +1386,52 @@ function startAutoSync(){
   console.log('⏰ Auto-sync activado: cada 10 minutos');
 }
 
-// Sincronización RÁPIDA de publicaciones (solo últimos 7 días, pocos estados)
+// Sincronización RÁPIDA de publicaciones - AHORA busca por fechas de actuaciones de cada proceso
+// para traer el HISTORIAL completo de documentos (no solo los recientes)
 async function syncPublicacionesProcesalesRapido(){
   const despachos = getDespachosDeProcesos();
   if(despachos.length === 0) return false;
   
-  console.log(`📋 Sync rápido publicaciones: ${despachos.length} despacho(s)...`);
+  console.log(`📋 Sync publicaciones (historial): ${despachos.length} despacho(s)...`);
   
   let documentosVinculados = 0;
   const hoy = new Date();
-  const hace7dias = new Date(hoy);
-  hace7dias.setDate(hace7dias.getDate() - 7);
   
-  const fechaInicio = hace7dias.toISOString().split('T')[0];
-  const fechaFin = hoy.toISOString().split('T')[0];
-  
+  // Para cada despacho, buscar por RANGOS DE FECHAS basados en las actuaciones
+  // de los procesos de ese despacho. Esto permite traer documentos históricos.
   for(const despacho of despachos){
     try {
-      // Usar versión simple sin paginación profunda
+      // Encontrar todas las fechas de actuaciones de los procesos de este despacho
+      const fechasActuaciones = [];
+      procesos.forEach(p => {
+        if(p.despacho === despacho.nombre && p.actuaciones){
+          p.actuaciones.forEach(act => {
+            if(act.fechaActuacion){
+              fechasActuaciones.push(new Date(act.fechaActuacion));
+            }
+          });
+        }
+      });
+      
+      // Determinar rango de fechas a buscar
+      let fechaInicio, fechaFin;
+      if(fechasActuaciones.length > 0){
+        fechasActuaciones.sort((a, b) => a - b);
+        // Desde la actuación más antigua (menos 7 días de margen)
+        const masAntigua = new Date(fechasActuaciones[0]);
+        masAntigua.setDate(masAntigua.getDate() - 7);
+        fechaInicio = masAntigua.toISOString().split('T')[0];
+        fechaFin = hoy.toISOString().split('T')[0];
+        console.log(`📅 ${despacho.nombre}: buscando desde ${fechaInicio} (${fechasActuaciones.length} actuaciones)`);
+      } else {
+        // Sin actuaciones: últimos 90 días
+        const hace90 = new Date(hoy);
+        hace90.setDate(hace90.getDate() - 90);
+        fechaInicio = hace90.toISOString().split('T')[0];
+        fechaFin = hoy.toISOString().split('T')[0];
+        console.log(`📅 ${despacho.nombre}: sin actuaciones, buscando últimos 90 días`);
+      }
+      
       const params = new URLSearchParams();
       params.set('fechaInicio', fechaInicio);
       params.set('fechaFin', fechaFin);
@@ -1411,13 +1439,14 @@ async function syncPublicacionesProcesalesRapido(){
       params.set('idMuni', despacho.codigo.substring(0, 5));
       params.set('idDespacho', despacho.codigo);
       params.set('profunda', 'true');
-      params.set('maxEstados', '5'); // Solo 5 estados más recientes
+      params.set('maxEstados', '100'); // Consultar hasta 100 estados para cubrir el historial
       
       const response = await fetch(`/api/publicaciones?${params.toString()}`);
       if(!response.ok) continue;
       
       const resultado = await response.json();
       if(resultado && resultado.documentosExpediente){
+        console.log(`📎 ${despacho.nombre}: ${resultado.documentosExpediente.length} docs de expediente, ${resultado.estadosConsultados} estados consultados`);
         for(const doc of resultado.documentosExpediente){
           if(vincularDocumentoAProceso(doc)){
             documentosVinculados++;
@@ -1425,9 +1454,11 @@ async function syncPublicacionesProcesalesRapido(){
         }
       }
     } catch(err){
-      console.warn(`⚠️ Error sync rápido ${despacho.codigo}:`, err.message);
+      console.warn(`⚠️ Error sync ${despacho.codigo}:`, err.message);
     }
   }
+  
+  console.log(`✅ Total documentos vinculados: ${documentosVinculados}`);
   
   if(documentosVinculados > 0){
     savePublicaciones();
